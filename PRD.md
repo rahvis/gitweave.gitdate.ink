@@ -703,7 +703,34 @@ This maps directly onto the assignment's own red flag — *"incorrect, incomplet
 data"* — and it is the kind of bug that only surfaces when output is checked against the source
 rather than against itself.
 
-### A.6 Confirmed as specified
+### A.6 The radar chart was wrong, and the fix changed the product
+
+§4.3 specified a radar for the Impact Fingerprint. Against live data it was not merely generic —
+it was **empty**. The top five sit at percentiles 78-100 on every axis, a 1.2x range pinned at the
+ceiling, so all five rendered as near-identical maximal pentagons. Radar area is additionally an
+artefact of axis order, so the shape was never a real quantity. It plotted the one variable on
+which the top five are indistinguishable.
+
+The same five on the **raw counts behind those percentiles** span 0-879 review threads, 5.6-30.1
+effective areas and 0-89% surface ownership.
+
+**The centre panel is now two views.** *Rank stability* (default) re-ranks the cohort under 2,000
+seeded weightings and reports each engineer's rank band and top-five probability — which converts
+"trust my weights" into a falsifiable claim, and is the honest companion to §2.8's admission that
+the weights are an opinion. *Cohort distribution* plots every engineer on the countable fact
+behind each dimension, with median and p90 rules, so the reader sees the distribution a percentile
+was drawn from. The repo's highest-volume engineer is plotted as a labelled counter-example —
+**Gilbert09 merged 2,492 PRs and ranks #21** — which is the fastest possible proof that this is
+not a volume metric.
+
+Measuring candidate axes against the live cohort also killed four of them: `problemStatementRate`
+(median = p90 = max = 100%), `followThrough` (constant 1.00), `reliability.modifier`
+(median = p90 = max = 1.10) and `filesCreated` (a raw-volume proxy whose maximum is held by the
+same engineer who holds maximum `mergedPRs`). **All four would have rendered as working charts
+while carrying no information** — the same failure mode as §A.4, and the reason every axis is now
+validated against the distribution before it is drawn.
+
+### A.7 Confirmed as specified
 
 - **Token pooling is necessary, not a nicety.** Measured ~8 GraphQL cost-points per 25 PRs, so a
   single credential's 5,000 points/hr covers ~12,500 PRs — the 90-day PostHog window sits right
