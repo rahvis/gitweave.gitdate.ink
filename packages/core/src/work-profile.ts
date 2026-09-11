@@ -18,6 +18,18 @@ import type { PRContext } from './context.js';
 
 const TYPE_RE = /^\s*([a-z]+)\s*(?:\(([^)]*)\))?\s*!?\s*:/i;
 
+/**
+ * Structural buckets, not product surfaces.
+ *
+ * `resolveProductArea` maps everything under `frontend/` to one bucket, and
+ * CI, repo-root and docs are similarly generic. They are legitimate areas of
+ * work and they are useless in the sentence "works mainly in X" — on live data
+ * four of the top five read as "works mainly in frontend-shell", which tells a
+ * leader nothing. They are ranked last rather than dropped, so someone whose
+ * work genuinely IS infrastructure is still described accurately.
+ */
+const GENERIC_SURFACES = new Set(['frontend-shell', 'ci', 'repo-root', 'docs', 'other', 'enterprise']);
+
 export type WorkType = 'feat' | 'fix' | 'perf' | 'refactor' | 'chore' | 'docs' | 'test' | 'ci' | 'revert' | 'other';
 
 const KNOWN: Record<string, WorkType> = {
@@ -87,9 +99,18 @@ export function buildWorkProfile(
 
   const featCount = counts.get('feat') ?? 0;
 
+  const rankedSurfaces = [...topAreas]
+    .sort((a, b) => {
+      const ga = GENERIC_SURFACES.has(a.area) ? 1 : 0;
+      const gb = GENERIC_SURFACES.has(b.area) ? 1 : 0;
+      if (ga !== gb) return ga - gb;              // specific surfaces first
+      return b.prCount - a.prCount;
+    })
+    .map((a) => a.area);
+
   return {
     byType,
-    primarySurfaces: topAreas.slice(0, 2).map((a) => a.area),
+    primarySurfaces: rankedSurfaces.slice(0, 2),
     signatureWork: features.map(({ ctx }) => ({
       number: ctx.pr.number,
       title: plainTitle(ctx.pr.title),

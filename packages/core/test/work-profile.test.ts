@@ -89,6 +89,28 @@ describe('work profile answers "what does this person do?"', () => {
     expect(dana.workSentence).not.toMatch(/undefined|NaN/);
   });
 
+  it('prefers a real product surface over a structural bucket', () => {
+    // resolveProductArea buckets ALL of frontend/ into one area, so left
+    // unranked it dominated the sentence for most engineers and said nothing.
+    const mixed = [
+      ...Array.from({ length: 10 }, (_, i) => makePR({
+        authorLogin: 'eve', mergedByLogin: 'eve', title: `chore(frontend): tidy ${i}`,
+        mergedAt: `2026-07-${String(i + 1).padStart(2, '0')}T12:00:00Z`,
+        commits: [{ oid: `e${i}`, authorLogin: 'eve', committedAt: `2026-07-${String(i + 1).padStart(2, '0')}T10:00:00Z`, message: 'x' }],
+        files: [{ path: `frontend/src/a${i}.tsx`, additions: 30, deletions: 5 }],
+      })),
+      ...Array.from({ length: 4 }, (_, i) => makePR({
+        authorLogin: 'eve', mergedByLogin: 'eve', title: `feat(surveys): survey capability ${i}`,
+        mergedAt: `2026-07-${String(i + 12).padStart(2, '0')}T12:00:00Z`,
+        commits: [{ oid: `s${i}`, authorLogin: 'eve', committedAt: `2026-07-${String(i + 12).padStart(2, '0')}T10:00:00Z`, message: 'x' }],
+        files: [{ path: `products/surveys/s${i}.py`, additions: 120, deletions: 10 }],
+      })),
+    ];
+    const eve = computeImpact(mixed, ENGINE_OPTS).engineers.find((e) => e.login === 'eve')!;
+    expect(eve.work.primarySurfaces[0]).toBe('surveys');
+    expect(eve.workSentence).toContain('surveys');
+  });
+
   it('says so plainly when someone only reviews', () => {
     expect(describeWork({
       byType: [], primarySurfaces: [], signatureWork: [], totalMerged: 0, featureShare: 0,
