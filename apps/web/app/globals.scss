@@ -421,3 +421,40 @@ code, .gw-mono { font-family: var(--gw-mono); }
   .gw-insight { flex-direction: column; gap: 0.2rem; padding: 0.75rem 1rem; }
   .gw-insight__text { font-size: 0.8125rem; }
 }
+
+
+// ── What they worked on ─────────────────────────────────────────────────────
+.gw-work {
+  flex: 0 0 auto;
+  padding: 0.5rem 1.25rem 0.6rem;
+  border-bottom: var(--gw-rail);
+  background: var(--cds-layer-01);
+}
+.gw-work__line {
+  margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--cds-text-secondary);
+  strong { color: var(--cds-text-primary); font-variant-numeric: tabular-nums; }
+  code {
+    font-family: var(--gw-mono); font-size: 0.75rem;
+    color: var(--cds-text-primary); background: var(--cds-layer-accent-01);
+    padding: 0.05rem 0.3rem; border-radius: 2px;
+  }
+}
+.gw-work__shipped {
+  margin-top: 0.25rem;
+  a {
+    color: var(--cds-link-primary); text-decoration: none;
+    &:hover { text-decoration: underline; }
+    svg { vertical-align: -1px; margin-left: 1px; opacity: .7; }
+  }
+}
+.gw-work__tag {
+  display: inline-block; margin-right: 0.45rem;
+  font-size: 0.625rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--cds-text-helper);
+}
+.gw-work__sep { color: var(--cds-text-helper); }
+
+@media (max-width: 767px) {
+  .gw-work { padding: 0.6rem 1rem; }
+  .gw-work__line { font-size: 0.78125rem; }
+}

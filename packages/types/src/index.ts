@@ -216,6 +216,18 @@ export interface EvidencePR {
   touchesCriticalPath: boolean;
 }
 
+export type WorkType =
+  | 'feat' | 'fix' | 'perf' | 'refactor' | 'chore' | 'docs' | 'test' | 'ci' | 'revert' | 'other';
+
+/** What the engineer actually built, in product terms rather than metrics. */
+export interface WorkProfile {
+  byType: Array<{ type: WorkType; count: number }>;
+  primarySurfaces: string[];
+  signatureWork: Array<{ number: number; title: string; url: string; area: string | null }>;
+  totalMerged: number;
+  featureShare: number;
+}
+
 export interface EngineerMetrics {
   login: string;
   avatarUrl: string | null;
@@ -243,6 +255,10 @@ export interface EngineerMetrics {
   archetype: Archetype;
   confidence: Confidence;
   whySentence: string;
+  /** What they built — the answer to "what does this person do?" */
+  work: WorkProfile;
+  /** One plain sentence naming their surfaces and work mix. */
+  workSentence: string;
   /** Raw countable value behind each dimension — what the cohort strips plot. */
   facts: Record<DimensionKey, number>;
   /** How robust this engineer's rank is to how you define impact. */

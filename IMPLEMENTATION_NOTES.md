@@ -148,6 +148,21 @@ earns 1.00.
 Two tests now hold the line: every engineer's `impactScore` must be ≤ 100, and it must stay ≤ 100
 under arbitrary re-weightings including degenerate ones (all weight on a single dimension).
 
+### 1.11 The dashboard never said what anyone actually built
+
+The brief is explicit that the reader "isn't in the weeds enough to read every line of code or PR
+description". Every panel answered *how much* and *how load-bearing* — and none answered *what*.
+To learn what the top engineer does for a living you had to read `feat(cohorts): filter cohorts
+and flags on person.created_at` in the evidence rail, which is precisely the weeds the brief
+rules out.
+
+PostHog uses conventional commit prefixes on **14,838 of 14,846** merged PRs (100%), so the work
+classifies with no heuristic and no model. The evidence section is now headed "What *X* worked
+on" and leads with a plain sentence — *"Works mainly in `feature_flags` and `cohorts` — 34 feat ·
+41 fix · 8 perf across 212 merged PRs"* — followed by the two or three **features** that best
+represent what they shipped, chosen by the same weighting the score uses and restricted to `feat`
+so the answer is what they built rather than what they patched.
+
 ---
 
 ## 2. Deliberate deviations from the PRD
@@ -193,7 +208,7 @@ Stated plainly, and surfaced in-product under the ⓘ action:
 | Console errors | 0 | **0** |
 | Metric materialisation (3 windows) | — | **~250 ms** per window |
 | GraphQL cost | — | **~8 points / 25 PRs** per request |
-| Engine tests | ≥85% coverage goal | **115 tests** |
+| Engine tests | ≥85% coverage goal | **125 tests** |
 | CI (typecheck + tests) | — | **~40 s** |
 | Deploy (build 3 images → live) | — | **~5 min** |
 

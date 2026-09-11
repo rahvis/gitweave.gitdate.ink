@@ -16,6 +16,7 @@ import { computeInitiative } from './dimensions/initiative.js';
 import { computeProblemShaping } from './dimensions/problem-shaping.js';
 import { computeReliability } from './dimensions/reliability.js';
 import { buildWhySentence, deriveArchetype, deriveConfidence, selectEvidence } from './explain.js';
+import { buildWorkProfile, describeWork } from './work-profile.js';
 import { clamp, hoursBetween, isoWeek, median, percentileRank } from './stats.js';
 import {
   computeRankStability, computeFactDistributions, computeVolumeBenchmark,
@@ -356,6 +357,7 @@ export function computeImpact(prs: PullRequestRecord[], opts: EngineOptions): Da
       .slice(0, 5);
 
     const totalMerges = c.raw.agentStewardedMerges + c.raw.humanAuthoredMerges;
+    const work = buildWorkProfile(c.raw.login, c.raw.authored, topAreas);
 
     return {
       login: c.raw.login,
@@ -385,6 +387,8 @@ export function computeImpact(prs: PullRequestRecord[], opts: EngineOptions): Da
       archetype: deriveArchetype(percentiles),
       confidence: deriveConfidence(c.raw.authored.length, opts.minPRsForRanking),
       whySentence: buildWhySentence(percentiles, c.dims),
+      work,
+      workSentence: describeWork(work),
       facts: {} as Record<DimensionKey, number>,      // filled below, once dims exist
       stability: { topFiveProbability: 0, bandLow: 0, bandHigh: 0, medianRank: 0 },
       teams: [...c.raw.teams].slice(0, 5),

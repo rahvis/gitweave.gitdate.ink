@@ -94,6 +94,28 @@ export function MethodologyModal({ open, onClose, cohort }: { open: boolean; onC
         &ldquo;agent leverage&rdquo; as a neutral statistic rather than scoring it.
       </p>
 
+      <h5 style={{ margin: '1.5rem 0 .5rem' }}>What &ldquo;impact&rdquo; here actually means</h5>
+      <p style={{ color: 'var(--cds-text-secondary)', fontSize: '.875rem', marginBottom: '1rem' }}>
+        Two honest caveats about the name on the door.
+      </p>
+      <ul style={{ color: 'var(--cds-text-secondary)', fontSize: '.875rem', paddingLeft: '1.25rem', listStyle: 'disc', marginBottom: '1rem' }}>
+        <li style={{ marginBottom: '.5rem' }}>
+          <strong>GitHub holds no outcome data.</strong> Whether a feature mattered to a customer,
+          prevented an incident, or moved a business metric is simply not in this dataset. What
+          GitWeave measures is closer to <em>load-bearing-ness</em> &mdash; how much of the
+          codebase and of other people&apos;s progress depends on this person &mdash; than to impact
+          in the fullest sense. It is a strong proxy and it is not the thing itself.
+        </li>
+        <li>
+          <strong>Most signals are still counts, just better-chosen ones.</strong> Consequential
+          review threads, blast-radius PRs and substantive comments are counts with a demanding
+          filter in front of them. The filter is the contribution: a review only counts if the
+          author changed code in response, and a file only counts for as much as other people
+          depend on it. But we are not claiming to have escaped counting &mdash; only to be
+          counting things that are hard to inflate and that correlate with work that matters.
+        </li>
+      </ul>
+
       <h5 style={{ margin: '1.5rem 0 .5rem' }}>Known limitations</h5>
       <ul style={{ color: 'var(--cds-text-secondary)', fontSize: '.875rem', paddingLeft: '1.25rem', listStyle: 'disc' }}>
         <li>Tenure is inferred from first activity inside the window; contributions before it are invisible.</li>

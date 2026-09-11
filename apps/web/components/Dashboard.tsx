@@ -13,6 +13,7 @@ import { RankCard } from './RankCard';
 import { CohortStrips } from './CohortStrips';
 import { CutLine } from './CutLine';
 import { InsightStrip } from './InsightStrip';
+import { WorkProfile } from './WorkProfile';
 import { Decomposition } from './Decomposition';
 import { EvidenceRail } from './EvidenceRail';
 import { AgentPanel } from './AgentPanel';
@@ -248,15 +249,16 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
           </section>
 
           {/* ── Row 2: drill-through ─────────────────────────────────── */}
-          <section className="gw-panel gw-area--evidence" aria-label="Evidence">
+          <section className="gw-panel gw-area--evidence" aria-label="What they worked on">
             <div className="gw-panel__head">
               <span className="gw-panel__title">
-                Evidence — highest-weighted contributions behind this score
+                What {active?.login ?? 'they'} worked on
               </span>
               <span className="gw-panel__meta">
-                {active ? `${active.login} · click any row to open it on GitHub` : ''}
+                highest-weighted contributions · click any row to open it on GitHub
               </span>
             </div>
+            {active && <WorkProfile engineer={active} />}
             <div className="gw-panel__body">
               {active && <EvidenceRail engineer={active} />}
             </div>

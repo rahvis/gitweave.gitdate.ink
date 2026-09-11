@@ -20,3 +20,5 @@ export {
   FACT_SPEC, STABILITY_DRAWS,
 } from './stability.js';
 export type { RankStability, FactDistribution } from './stability.js';
+export { buildWorkProfile, describeWork, classifyTitle, plainTitle } from './work-profile.js';
+export type { WorkProfile, WorkType } from './work-profile.js';

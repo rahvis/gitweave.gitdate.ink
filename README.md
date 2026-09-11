@@ -102,6 +102,20 @@ score.
 Scores are **percentile ranks within the active cohort**, not raw values — which makes the
 dimensions commensurable and keeps one 4,700-line PR from dominating.
 
+### What "impact" here honestly means
+
+Two caveats stated in-product as well as here:
+
+**GitHub holds no outcome data.** Whether a feature mattered to a customer, prevented an incident,
+or moved a business metric is not in this dataset. What GitWeave measures is closer to
+*load-bearing-ness* — how much of the codebase and of other people's progress depends on this
+person — than to impact in the fullest sense. A strong proxy, not the thing itself.
+
+**Most signals are still counts, just better-chosen ones.** Consequential threads, blast-radius PRs
+and substantive comments are counts with a demanding filter in front of them. The filter is the
+contribution — a review only counts if the author changed code in response; a file counts for as
+much as other people depend on it — but the claim is *harder to inflate*, not *not counting*.
+
 ### Deliberately not measured
 
 Lines of code as a positive signal · commit counts · hours, time-of-day or weekend activity ·
