@@ -2,7 +2,7 @@
 import type { EngineerMetrics } from '@gitweave/types';
 import { Tag } from '@carbon/react';
 import { ArrowUpRight } from '@carbon/icons-react';
-import { compactDate } from '../lib/format';
+import { compactDate, num } from '../lib/format';
 
 /**
  * The evidence rail is the product's answer to "can we validate the findings?"
@@ -30,8 +30,8 @@ export function EvidenceRail({ engineer }: { engineer: EngineerMetrics }) {
             </span>
           </span>
           <span className="gw-ev__stats">
-            <span className="gw-add">+{ev.additions.toLocaleString()}</span>{' '}
-            <span className="gw-del">-{ev.deletions.toLocaleString()}</span>{' '}
+            <span className="gw-add">+{num(ev.additions)}</span>{' '}
+            <span className="gw-del">-{num(ev.deletions)}</span>{' '}
             · {ev.changedFiles}f · {compactDate(ev.mergedAt)} <ArrowUpRight size={12} />
           </span>
         </a>

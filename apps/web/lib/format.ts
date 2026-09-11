@@ -8,9 +8,27 @@ export function hours(h: number | null): string {
   return `${(h / 24).toFixed(1)}d`;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Deterministic date and number formatting.
+ *
+ * `toLocaleDateString(undefined, ...)` and `Number.toLocaleString()` resolve
+ * the locale (and timezone) differently in Node than in the browser, so the
+ * server and client rendered different text for the same value and React
+ * reported a hydration mismatch (#418). Fixing the format at UTC and a comma
+ * separator makes both sides agree by construction.
+ */
 export function compactDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
+/** Thousands separator that cannot drift between server and client. */
+export function num(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 export function relativeTime(iso: string): string {

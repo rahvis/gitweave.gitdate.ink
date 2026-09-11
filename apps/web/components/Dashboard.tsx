@@ -8,7 +8,7 @@ import {
 import { Settings, Information, Asleep, Light, Restart, ChartTreemap } from '@carbon/icons-react';
 import { DEFAULT_WEIGHTS, type DashboardPayload, type Weights } from '@gitweave/types';
 import { rescoreLocal } from '../lib/score';
-import { relativeTime } from '../lib/format';
+import { relativeTime, num } from '../lib/format';
 import { RankCard } from './RankCard';
 import { CohortStrips } from './CohortStrips';
 import { CutLine } from './CutLine';
@@ -98,8 +98,8 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
           <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', paddingLeft: '.5rem', minWidth: 0 }}>
             <Tag type="outline" size="sm">{cohort.repo}</Tag>
             <span className="gw-headmeta" style={{ fontSize: '.75rem', color: 'var(--cds-text-helper)', whiteSpace: 'nowrap' }}>
-              {cohort.totalMergedPRs.toLocaleString()} merged PRs ·{' '}
-              {cohort.activeEngineers.toLocaleString()} engineers ·{' '}
+              {num(cohort.totalMergedPRs)} merged PRs ·{' '}
+              {num(cohort.activeEngineers)} engineers ·{' '}
               {cohort.botsExcluded.length} bots excluded ·{' '}
               computed{' '}
               <span suppressHydrationWarning>
@@ -199,7 +199,7 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
               </span>
               <span className="gw-panel__meta">
                 {view === 'cut'
-                  ? `${(cohort.stabilityDraws ?? 2000).toLocaleString()} random weightings`
+                  ? `${num(cohort.stabilityDraws ?? 2000)} random weightings`
                   : `${active?.login ?? ''} against all ${cohort.activeEngineers} engineers`}
               </span>
             </div>

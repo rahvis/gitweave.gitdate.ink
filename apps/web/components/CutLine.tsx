@@ -1,5 +1,6 @@
 'use client';
 import type { CohortSummary, EngineerMetrics } from '@gitweave/types';
+import { num } from '../lib/format';
 
 interface Props {
   engineers: EngineerMetrics[];
@@ -69,7 +70,7 @@ export function CutLine({ engineers, selected, cohort, onSelect }: Props) {
   return (
     <div className="gw-cut">
       <p className="gw-cut__verdict">
-        Re-ranked under <strong>{(cohort.stabilityDraws ?? 2000).toLocaleString()}</strong> random
+        Re-ranked under <strong>{num(cohort.stabilityDraws ?? 2000)}</strong> random
         weightings of the five dimensions,{' '}
         {locked > 0 ? (
           <>

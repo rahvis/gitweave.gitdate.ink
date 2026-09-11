@@ -1,6 +1,7 @@
 'use client';
 import type { CohortSummary } from '@gitweave/types';
 import { Modal, StructuredListWrapper, StructuredListHead, StructuredListRow, StructuredListCell, StructuredListBody, InlineNotification, Tag } from '@carbon/react';
+import { num } from '../lib/format';
 
 /**
  * Anti-use notice ships *inside* the product, not in a README.
@@ -68,7 +69,7 @@ export function MethodologyModal({ open, onClose, cohort }: { open: boolean; onC
       <p style={{ color: 'var(--cds-text-secondary)', fontSize: '.875rem', marginBottom: '.5rem' }}>
         Without this filter the top reviewers on PostHog are all bots — <code>stamphog</code>,{' '}
         <code>posthog[bot]</code>, <code>greptile-apps</code>, <code>veria-ai</code> and{' '}
-        <code>copilot-pull-request-reviewer</code>. {cohort.botReviewsExcluded.toLocaleString()} bot reviews
+        <code>copilot-pull-request-reviewer</code>. {num(cohort.botReviewsExcluded)} bot reviews
         were discarded in this window.
       </p>
       <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
@@ -77,7 +78,7 @@ export function MethodologyModal({ open, onClose, cohort }: { open: boolean; onC
 
       <h5 style={{ margin: '1.5rem 0 .5rem' }}>Agent-authored PRs</h5>
       <p style={{ color: 'var(--cds-text-secondary)', fontSize: '.875rem' }}>
-        {cohort.agentMergedPRs.toLocaleString()} of {cohort.totalMergedPRs.toLocaleString()} merged PRs in this
+        {num(cohort.agentMergedPRs)} of {num(cohort.totalMergedPRs)} merged PRs in this
         window were opened by PostHog&apos;s self-driving agent. Crediting the bot would put a robot at
         rank 1; dropping those PRs would erase the humans who committed into them and merged them.
         GitWeave attributes them at commit and steward level to the humans involved, and reports
