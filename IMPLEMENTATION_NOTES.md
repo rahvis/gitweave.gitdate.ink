@@ -62,6 +62,35 @@ made the related assertion inert; both are fixed and the detection is now assert
 
 **Lesson:** a metric that silently returns zero is worse than one that throws.
 
+### 1.5 An interrupted backfill was abandoned forever
+
+The boot-backfill guard asked *"does the store contain any PRs?"*. Deploying while a backfill was
+in flight restarts the ingest container, so the guard then saw 2,263 of ~15,000 PRs, concluded
+the work was done, and skipped the backfill on every subsequent boot.
+
+The right question is *"did the last backfill reach `complete`?"*. It now enqueues with
+`resume: true`, which continues from the checkpointed cursor — the checkpointing was already
+there, the guard just never let it be used.
+
+### 1.6 The 90-day window silently truncated at 3,841 of ~15,000 PRs
+
+The worst bug of the six, because it reported success.
+
+Pagination stopped after three consecutive pages containing no in-window *merges*. That reads as
+a sensible tolerance, and it is wrong: the ordering is `UPDATED_AT` descending, so old PRs that
+were merely commented on recently sort early. A run of them tripped the heuristic and ended the
+walk — on PostHog, at roughly a quarter of the window, while logging `"complete"`.
+
+The sound rule keys on the field the ordering is actually built from. Since `updatedAt >=
+mergedAt` always holds, once a page's oldest `updatedAt` precedes the window start, no later PR
+can be in the window, so stopping there is **provably lossless**. Covered by
+`test/pagination.test.ts`.
+
+**Lesson, twice over:** a metric that silently returns zero (§1.4) and a window that silently
+truncates are the same failure — confident output with no signal that anything is missing.
+Both were invisible until the numbers were checked against the repo rather than against
+themselves.
+
 ---
 
 ## 2. Deliberate deviations from the PRD
@@ -107,7 +136,9 @@ Stated plainly, and surfaced in-product under the ⓘ action:
 | Console errors | 0 | **0** |
 | Metric materialisation (3 windows) | — | **~250 ms** per window |
 | GraphQL cost | — | **~8 points / 25 PRs** per request |
-| Engine tests | ≥85% coverage goal | **96 tests** |
+| Engine tests | ≥85% coverage goal | **99 tests** |
+| CI (typecheck + tests) | — | **~40 s** |
+| Deploy (build 3 images → live) | — | **~5 min** |
 
 A single token's 5,000 points/hr covers roughly 12,500 PRs, so the full PostHog window sits right
 at the edge of one credential — which is precisely the case for `GITHUB_TOKENS` pooling that the

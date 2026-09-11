@@ -690,7 +690,20 @@ before a PR can claim to have founded a surface.
 have a problem section, and the dimension contributed nothing while looking perfectly plausible.
 **Corrected: ingest raw `body`**, and tolerate markdown, bold and plain headings.
 
-### A.5 Confirmed as specified
+### A.5 Termination must key on the ordering field
+
+§6.3 specified cursor pagination over `orderBy: UPDATED_AT` with a `mergedAt` window filter, but
+did not specify the stop condition. The implementation used a tolerance of three consecutive
+pages with no in-window merges, which silently truncated PostHog's window at **3,841 of ~15,000
+PRs** while reporting completion — old PRs commented on recently sort early and trip the
+heuristic. **Corrected: stop when a page's oldest `updatedAt` precedes the window start.** Since
+`updatedAt >= mergedAt`, that is provably lossless.
+
+This maps directly onto the assignment's own red flag — *"incorrect, incomplete or missing
+data"* — and it is the kind of bug that only surfaces when output is checked against the source
+rather than against itself.
+
+### A.6 Confirmed as specified
 
 - **Token pooling is necessary, not a nicety.** Measured ~8 GraphQL cost-points per 25 PRs, so a
   single credential's 5,000 points/hr covers ~12,500 PRs — the 90-day PostHog window sits right
