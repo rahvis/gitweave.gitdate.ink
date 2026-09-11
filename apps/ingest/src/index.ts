@@ -2,7 +2,7 @@ import { Queue, Worker, type Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { getEnv } from '@gitweave/config';
 import { logger } from '@gitweave/github';
-import { connect, countPullRequests } from '@gitweave/db';
+import { connect, countPullRequests, getSyncState } from '@gitweave/db';
 import { syncRepo } from './sync.js';
 import { materialise } from './materialise.js';
 
@@ -49,21 +49,31 @@ async function main(): Promise<void> {
   logger.info({ cron: env.SYNC_CRON }, 'Incremental sync scheduled');
 
   /**
-   * Boot backfill is idempotent: CI sets BACKFILL_ON_BOOT on every deploy, so
-   * the worker — not the pipeline — decides whether a ~45-minute full sync is
-   * actually needed. An empty store means a fresh droplet; a populated one is
-   * left to the 15-minute incremental cron.
+   * Boot backfill is idempotent AND resumable.
+   *
+   * CI sets BACKFILL_ON_BOOT on every deploy, so the worker — not the
+   * pipeline — decides whether a ~45-minute full sync is needed. The test is
+   * "did the last backfill reach `complete`", NOT "is there any data":
+   * deploying mid-backfill restarts this container, and a data-presence check
+   * would treat a half-finished window as done and abandon it for good.
+   *
+   * `resume: true` continues from the checkpointed cursor, so an interrupted
+   * backfill costs seconds, not a restart from page one.
    */
   if (env.BACKFILL_ON_BOOT) {
     const db = await connect(env.MONGODB_URI, env.MONGODB_DB_NAME);
     const repo = `${env.TARGET_REPO_OWNER}/${env.TARGET_REPO_NAME}`;
+    const state = await getSyncState(db, repo, 'backfill');
     const existing = await countPullRequests(db, repo);
     const forced = process.env.FORCE_BACKFILL === 'true';
-    if (existing === 0 || forced) {
+    if (state?.status !== 'complete' || forced) {
       await queue.add('backfill', { resume: true }, { removeOnComplete: 20 });
-      logger.info({ existing, forced }, 'Backfill enqueued');
+      logger.info(
+        { existing, lastStatus: state?.status ?? 'none', resumeCursor: Boolean(state?.cursor), forced },
+        'Backfill enqueued',
+      );
     } else {
-      logger.info({ existing }, 'Store already populated — skipping boot backfill');
+      logger.info({ existing }, 'Backfill already complete — incremental cron will keep it current');
     }
   }
   logger.info('Ingest worker ready');
