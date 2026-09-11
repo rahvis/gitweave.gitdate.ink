@@ -185,7 +185,16 @@ jobs:
             cd /opt/gitweave
             chmod 600 .env
             docker compose pull --quiet
-            docker compose up -d --remove-orphans
+
+            # containerd occasionally fails to create a task ("Unavailable:
+            # error reading from server: EOF") when several containers are
+            # recreated at once. It is transient and a second attempt has
+            # always succeeded, so retry once before failing the deploy.
+            if ! docker compose up -d --remove-orphans; then
+              echo "compose up failed — retrying once after settling"
+              sleep 10
+              docker compose up -d --remove-orphans
+            fi
 
             # Metrics are a MATERIALISED document, and it is only rebuilt when a
             # sync job finishes. A deploy that changes the metric engine would
@@ -194,8 +203,16 @@ jobs:
             # and the numbers on screen can never disagree.
             docker compose run --rm --no-deps ingest node dist/cli.js materialise
 
-            docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
+            # Each deploy adds ~1.5GB of images. The age filter alone never
+            # fires on same-day deploys, so the host reached 25GB of images
+            # with 84% reclaimable. Dangling layers (superseded :latest) are
+            # always safe to drop; tagged images are kept for 48h so a rollback
+            # to a recent SHA still resolves locally.
+            docker image prune -f >/dev/null 2>&1 || true
+            docker image prune -af --filter "until=48h" >/dev/null 2>&1 || true
+
             docker compose ps
+            df -h / | tail -1
           REMOTE
 
       - name: Wait for health
