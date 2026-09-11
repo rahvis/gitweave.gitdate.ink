@@ -15,3 +15,8 @@ export {
   median, quantile, percentileRank, effectiveCount, clamp, log1p, isoWeek, hoursBetween,
 } from './stats.js';
 export { buildOwnershipTreemap, buildCollaborationEdges } from './views.js';
+export {
+  computeRankStability, computeFactDistributions, computeVolumeBenchmark,
+  FACT_SPEC, STABILITY_DRAWS,
+} from './stability.js';
+export type { RankStability, FactDistribution } from './stability.js';

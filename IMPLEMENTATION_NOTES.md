@@ -91,6 +91,48 @@ truncates are the same failure — confident output with no signal that anything
 Both were invisible until the numbers were checked against the repo rather than against
 themselves.
 
+### 1.7 The radar chart could not discriminate — and three metrics were dead
+
+The PRD specified a radar/spider chart for the Impact Fingerprint (§4.3). On live data it was
+worse than generic, it was **empty**: the top five sit at percentiles 78-100 on *every* axis, a
+1.2x range pinned at the ceiling, so all five rendered as near-identical maximal pentagons. Radar
+area is also an artefact of axis order, so the shape was never a real quantity.
+
+The same five engineers on the **raw counts behind those percentiles** span 0-879 review threads,
+5.6-29.6 effective areas and 0-89% surface ownership. Same people, same data, an axis that
+separates them — and one a leader can check, because "879 review threads that changed code" is
+falsifiable in a way that "94th percentile" is not.
+
+Measuring the candidate axes against the live cohort then killed three of them outright:
+
+| Rejected field | Measured on 243 engineers |
+|---|---|
+| `problemShaping.problemStatementRate` | median = p90 = max = **100%** — PostHog's PR template means everyone fills it in |
+| `initiative.followThrough` | exactly **1.00** for every engineer (we ingest merged PRs only) |
+| `reliability.modifier` | median = p75 = p90 = max = **1.10** — would render as one pixel column |
+| `initiative.filesCreated` | max held by the same engineer who holds max `mergedPRs` **and** max `criticalPathPRs` — a raw-volume proxy |
+
+All four would have looked like working charts while carrying no information. They are replaced by
+`consequentialThreads`, `criticalPathPRs`, `effectiveAreas`, `stewardedMerges` and
+`discussionOnOthers` — countable, legible and genuinely spread.
+
+### 1.8 Carbon's fixed header silently ate 48px of the layout
+
+`.cds--header` is `position: fixed`, so the UI Shell header is out of flow and overlays whatever
+follows it. That single fact produced two separate user-visible bugs — the left column's heading
+and the top of rank card 1 hidden, and the chart's top axis label clipped — which looked unrelated
+until the shipped CSS was read. Fixed by offsetting the shell by a `--gw-header-h` token rather
+than by nudging individual panels.
+
+### 1.9 Hover tooltips are invisible on touch
+
+Carbon's `DefinitionTooltip` renders a floating layer positioned against its trigger. Inside a
+narrow `overflow-y: auto` panel it was both clipped by the scroll container and pushed off the
+panel's left edge. The deeper problem is that **hover does not exist on a phone**, so a
+hover-only affordance hides the methodology from every mobile reader. Replaced with an in-place
+disclosure that expands beneath the label: nothing to position, nothing to overflow, and the same
+interaction on every input device.
+
 ---
 
 ## 2. Deliberate deviations from the PRD
@@ -136,7 +178,7 @@ Stated plainly, and surfaced in-product under the ⓘ action:
 | Console errors | 0 | **0** |
 | Metric materialisation (3 windows) | — | **~250 ms** per window |
 | GraphQL cost | — | **~8 points / 25 PRs** per request |
-| Engine tests | ≥85% coverage goal | **99 tests** |
+| Engine tests | ≥85% coverage goal | **112 tests** |
 | CI (typecheck + tests) | — | **~40 s** |
 | Deploy (build 3 images → live) | — | **~5 min** |
 

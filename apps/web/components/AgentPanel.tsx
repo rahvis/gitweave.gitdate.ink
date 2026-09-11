@@ -1,6 +1,6 @@
 'use client';
 import type { EngineerMetrics } from '@gitweave/types';
-import { DefinitionTooltip } from '@carbon/react';
+import { Explain } from './Explain';
 
 /**
  * Agent Leverage — reported, never scored.
@@ -16,12 +16,10 @@ export function AgentPanel({ engineer }: { engineer: EngineerMetrics }) {
   return (
     <div className="gw-agent">
       <div className="gw-kv" style={{ marginBottom: '.375rem' }}>
-        <DefinitionTooltip
-          openOnHover
-          definition="Share of this engineer's merged output that began as an agent-opened PR they committed into, reviewed, or merged. Neutral statistic — it is not scored up or down."
-        >
-          <span className="gw-panel__title">Agent leverage</span>
-        </DefinitionTooltip>
+        <Explain
+          label={<span className="gw-panel__title">Agent leverage</span>}
+          detail="Share of this engineer's merged output that began as an agent-opened PR they committed into, reviewed, or merged. Neutral statistic — it is not scored up or down."
+        />
         <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{share.toFixed(0)}%</strong>
       </div>
       <div className="gw-bar">

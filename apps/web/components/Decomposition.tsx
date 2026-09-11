@@ -1,6 +1,7 @@
 'use client';
 import { DIMENSION_LABELS, type EngineerMetrics, type Weights } from '@gitweave/types';
-import { DefinitionTooltip, Tag } from '@carbon/react';
+import { Tag } from '@carbon/react';
+import { Explain } from './Explain';
 import { contributions } from '../lib/score';
 import { DIMENSION_COLORS, hours, pct } from '../lib/format';
 
@@ -60,12 +61,10 @@ export function Decomposition({ engineer, weights }: Props) {
       {rows.map((r) => (
         <div className="gw-decomp__row" key={r.key}>
           <div className="gw-decomp__head">
-            <DefinitionTooltip
-              openOnHover
-              definition={`${formula[r.key]}. Percentile ${Math.round(r.percentile)} of ${100} within the active cohort, x weight ${r.weight.toFixed(2)}.`}
-            >
-              <span className="gw-decomp__label">{DIMENSION_LABELS[r.key]}</span>
-            </DefinitionTooltip>
+            <Explain
+              label={<span className="gw-decomp__label">{DIMENSION_LABELS[r.key]}</span>}
+              detail={`${formula[r.key]}. Percentile ${Math.round(r.percentile)} of 100 within the active cohort, x weight ${r.weight.toFixed(2)} = ${r.points.toFixed(1)} points.`}
+            />
             <span className="gw-decomp__points">{r.points.toFixed(1)}</span>
           </div>
           <div className="gw-bar">
@@ -82,12 +81,10 @@ export function Decomposition({ engineer, weights }: Props) {
 
       <div style={{ borderTop: 'var(--gw-rail)', paddingTop: '.75rem' }}>
         <div className="gw-kv">
-          <DefinitionTooltip
-            openOnHover
-            definition="A multiplier, never a headline. It can temper a high rank but cannot manufacture one, and it is floored at 0.85 so it never becomes a blame score."
-          >
-            <span>Reliability</span>
-          </DefinitionTooltip>
+          <Explain
+            label={<span>Reliability</span>}
+            detail="A multiplier, never a headline. It can temper a high rank but cannot manufacture one, and it is floored at 0.85 so it never becomes a blame score."
+          />
           <strong>
             &times;{engineer.reliability.modifier.toFixed(2)}{' '}
             {engineer.reliability.reverts === 0

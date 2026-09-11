@@ -17,6 +17,10 @@ import { computeProblemShaping } from './dimensions/problem-shaping.js';
 import { computeReliability } from './dimensions/reliability.js';
 import { buildWhySentence, deriveArchetype, deriveConfidence, selectEvidence } from './explain.js';
 import { clamp, hoursBetween, isoWeek, median, percentileRank } from './stats.js';
+import {
+  computeRankStability, computeFactDistributions, computeVolumeBenchmark,
+  FACT_SPEC, STABILITY_DRAWS,
+} from './stability.js';
 
 export interface EngineOptions {
   repo: string;
@@ -381,6 +385,8 @@ export function computeImpact(prs: PullRequestRecord[], opts: EngineOptions): Da
       archetype: deriveArchetype(percentiles),
       confidence: deriveConfidence(c.raw.authored.length, opts.minPRsForRanking),
       whySentence: buildWhySentence(percentiles, c.dims),
+      facts: {} as Record<DimensionKey, number>,      // filled below, once dims exist
+      stability: { topFiveProbability: 0, bandLow: 0, bandHigh: 0, medianRank: 0 },
       teams: [...c.raw.teams].slice(0, 5),
       topAreas,
       evidence: selectEvidence(c.raw.login, c.raw.authored),
@@ -388,6 +394,18 @@ export function computeImpact(prs: PullRequestRecord[], opts: EngineOptions): Da
   });
 
   engineers.sort((a, b) => b.impactScore - a.impactScore);
+
+  // Raw countable facts, then rank stability over the sorted cohort.
+  for (const e of engineers) {
+    e.facts = Object.fromEntries(FACT_SPEC.map((f) => [f.key, f.get(e)])) as Record<DimensionKey, number>;
+  }
+  const stability = computeRankStability(engineers);
+  for (const e of engineers) {
+    const s = stability.get(e.login);
+    if (s) e.stability = s;
+  }
+  const factDistributions = computeFactDistributions(engineers);
+  const volumeBenchmark = computeVolumeBenchmark(engineers);
 
   const ttms = contexts
     .map((c) => (c.pr.mergedAt ? hoursBetween(c.pr.createdAt, c.pr.mergedAt) : null))
@@ -414,6 +432,9 @@ export function computeImpact(prs: PullRequestRecord[], opts: EngineOptions): Da
     botReviewsExcluded: bots.countBotReviews(inWindow),
     medianTimeToMergeHours: median(ttms),
     medianPercentiles,
+    factDistributions,
+    volumeBenchmark,
+    stabilityDraws: STABILITY_DRAWS,
   };
 
   return { cohort, engineers };

@@ -10,7 +10,9 @@ import { DEFAULT_WEIGHTS, type DashboardPayload, type Weights } from '@gitweave/
 import { rescoreLocal } from '../lib/score';
 import { relativeTime } from '../lib/format';
 import { RankCard } from './RankCard';
-import { Fingerprint } from './Fingerprint';
+import { CohortStrips } from './CohortStrips';
+import { CutLine } from './CutLine';
+import { InsightStrip } from './InsightStrip';
 import { Decomposition } from './Decomposition';
 import { EvidenceRail } from './EvidenceRail';
 import { AgentPanel } from './AgentPanel';
@@ -38,6 +40,10 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
   const [theme, setTheme] = useState<'g100' | 'white'>('g100');
   const [selected, setSelected] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // Default is the Cut Line: the centre panel's job is to INTERROGATE the
+  // ranking, not re-render the five percentiles the right-hand panel already
+  // shows with raw facts attached.
+  const [view, setView] = useState<'cut' | 'strips'>('cut');
 
   const dirty = useMemo(
     () => Object.keys(DEFAULT_WEIGHTS).some(
@@ -75,7 +81,7 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
           </HeaderName>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', paddingLeft: '.5rem', minWidth: 0 }}>
             <Tag type="outline" size="sm">{cohort.repo}</Tag>
-            <span style={{ fontSize: '.75rem', color: 'var(--cds-text-helper)', whiteSpace: 'nowrap' }}>
+            <span className="gw-headmeta" style={{ fontSize: '.75rem', color: 'var(--cds-text-helper)', whiteSpace: 'nowrap' }}>
               {cohort.totalMergedPRs.toLocaleString()} merged PRs ·{' '}
               {cohort.activeEngineers.toLocaleString()} engineers ·{' '}
               {cohort.botsExcluded.length} bots excluded ·{' '}
@@ -130,6 +136,8 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
           />
         )}
 
+        <InsightStrip top={ranked.slice(0, TOP_N)} cohort={cohort} />
+
         <div className="gw-main">
           {/* ── Column 1: the answer ─────────────────────────────────── */}
           <section className="gw-panel gw-area--ranks" aria-label="Most impactful engineers">
@@ -163,15 +171,44 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
           </section>
 
           {/* ── Column 2: the shape ──────────────────────────────────── */}
-          <section className="gw-panel gw-area--fingerprint" aria-label="Impact fingerprint">
+          <section className="gw-panel gw-area--fingerprint" aria-label="Evidence for the ranking">
             <div className="gw-panel__head">
-              <span className="gw-panel__title">Impact fingerprint</span>
-              <span className="gw-panel__meta">{active ? `${active.login} vs cohort median` : ''}</span>
+              <span className="gw-panel__title">
+                {view === 'cut'
+                  ? 'How firm is this top 5?'
+                  : 'Where they beat the room'}
+              </span>
+              <span className="gw-panel__meta">
+                {view === 'cut'
+                  ? `${(cohort.stabilityDraws ?? 2000).toLocaleString()} random weightings`
+                  : `${active?.login ?? ''} against all ${cohort.activeEngineers} engineers`}
+              </span>
             </div>
-            <div className="gw-panel__body" style={{ display: 'flex' }}>
-              {active
-                ? <Fingerprint engineer={active} cohort={cohort} theme={theme} />
-                : <div className="gw-empty">No engineers in this window.</div>}
+            <div className="gw-views" role="tablist" aria-label="Centre panel view">
+              <button type="button" role="tab" aria-selected={view === 'cut'}
+                className={`gw-views__tab${view === 'cut' ? ' gw-views__tab--active' : ''}`}
+                onClick={() => setView('cut')}>
+                Rank stability
+              </button>
+              <button type="button" role="tab" aria-selected={view === 'strips'}
+                className={`gw-views__tab${view === 'strips' ? ' gw-views__tab--active' : ''}`}
+                onClick={() => setView('strips')}>
+                Cohort distribution
+              </button>
+            </div>
+            <div className="gw-panel__body">
+              {!active && <div className="gw-empty">No engineers in this window.</div>}
+              {active && view === 'strips' && (
+                <CohortStrips
+                  engineer={active}
+                  peers={ranked.slice(0, TOP_N).filter((e) => e.login !== active.login)}
+                  cohort={cohort}
+                  compact={false}
+                />
+              )}
+              {active && view === 'cut' && (
+                <CutLine engineers={ranked} selected={active} cohort={cohort} onSelect={setSelected} />
+              )}
             </div>
           </section>
 

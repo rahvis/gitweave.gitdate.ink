@@ -14,17 +14,51 @@
   --gw-font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --gw-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --gw-rail: 1px solid var(--cds-border-subtle-01);
+
+  /* Carbon's UI Shell header is `position: fixed`, so it is OUT OF FLOW and
+     silently overlays the first 3rem of whatever follows it. That single fact
+     was eating the left column's heading and clipping the chart's top axis
+     label. Everything below offsets by this token rather than guessing. */
+  --gw-header-h: 3rem;
+
+  /* Apple HIG minimum comfortable touch target. */
+  --gw-tap: 44px;
+
+  --gw-safe-l: env(safe-area-inset-left, 0px);
+  --gw-safe-r: env(safe-area-inset-right, 0px);
+  --gw-safe-b: env(safe-area-inset-bottom, 0px);
 }
 
 html, body { font-family: var(--gw-font); height: 100%; }
-body { background: var(--cds-background); color: var(--cds-text-primary); overflow-x: hidden; }
+html {
+  -webkit-text-size-adjust: 100%;   // iOS must not reflow on rotate
+  text-size-adjust: 100%;
+}
+body {
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
 code, .gw-mono { font-family: var(--gw-mono); }
+* { -webkit-font-smoothing: antialiased; }
 
 // ── Single-page shell ───────────────────────────────────────────────────────
 // The primary answer (top 5 + why + evidence) must fit one 1440x900 laptop
 // screen without scrolling. Below that height the grid relaxes and scrolls
 // rather than crushing the content.
-.gw-shell { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.gw-shell {
+  display: flex;
+  flex-direction: column;
+  // 100dvh tracks mobile Safari's collapsing address bar; 100vh is the fallback.
+  height: 100vh;
+  height: 100dvh;
+  padding-block-start: var(--gw-header-h);   // clear the fixed Carbon header
+  padding-inline: var(--gw-safe-l) var(--gw-safe-r);
+  box-sizing: border-box;
+  overflow: hidden;
+}
 .gw-main {
   flex: 1; min-height: 0; display: grid;
   grid-template-columns: 22rem minmax(0, 1fr) 21rem;
@@ -54,7 +88,7 @@ code, .gw-mono { font-family: var(--gw-mono); }
 .gw-rank {
   display: grid; grid-template-columns: 1.25rem 2rem 1fr auto;
   gap: $spacing-03; align-items: start;
-  padding: $spacing-04 $spacing-05; width: 100%; text-align: left;
+  padding: $spacing-03 $spacing-05; width: 100%; text-align: left;
   border: none; border-bottom: var(--gw-rail); border-left: 3px solid transparent;
   background: transparent; color: inherit; cursor: pointer;
   transition: background 150ms cubic-bezier(.2,0,.38,.9), border-color 150ms;
@@ -68,6 +102,7 @@ code, .gw-mono { font-family: var(--gw-mono); }
 .gw-rank__why { @include type-style('label-01'); color: var(--cds-text-secondary); margin-top: .125rem; line-height: 1.35; display: block; }
 .gw-rank__tags { display: flex !important; flex-wrap: wrap; gap: .25rem; margin-top: .375rem; }
 .gw-rank__score { @include type-style('heading-03'); font-variant-numeric: tabular-nums; line-height: 1; }
+.gw-rank__why { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .gw-rank__scorelabel { @include type-style('label-01'); color: var(--cds-text-helper); text-align: right; }
 
 // ── Score decomposition ─────────────────────────────────────────────────────
@@ -100,15 +135,289 @@ code, .gw-mono { font-family: var(--gw-mono); }
 .gw-chartwrap { padding: $spacing-03 $spacing-05 $spacing-05; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .gw-empty { padding: $spacing-07; text-align: center; color: var(--cds-text-secondary); }
 
-@media (max-height: 800px) {
-  .gw-shell { height: auto; min-height: 100vh; overflow: auto; }
-  .gw-main { grid-template-rows: minmax(28rem, auto) auto; }
+// ── Responsive ──────────────────────────────────────────────────────────────
+// The single-screen constraint is a DESKTOP promise. Below it, forcing one
+// screen would crush the content; the honest behaviour is to stack and let the
+// page scroll, keeping the answer (top 5) first in source order.
+
+// Short laptops: let the grid breathe instead of compressing the radar to nothing.
+@media (max-height: 820px) and (min-width: 1200px) {
+  .gw-shell { height: auto; min-height: 100dvh; overflow: visible; }
+  .gw-main { grid-template-rows: minmax(26rem, auto) auto; }
+  .gw-area--evidence { max-height: none; }
 }
-@media (max-width: 1200px) {
-  .gw-shell { height: auto; overflow: auto; }
+
+// Tablet and below: one column, page-level scrolling.
+@media (max-width: 1199px) {
+  .gw-shell { height: auto; min-height: 100dvh; overflow: visible; }
   .gw-main {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
     grid-template-areas: 'ranks' 'fingerprint' 'decomposition' 'evidence';
   }
   .gw-area--evidence { max-height: none; }
+  // Panels must not trap scroll inside themselves on touch.
+  .gw-panel__body { overflow: visible; }
+  .gw-panel { min-height: auto; }
+}
+
+// Phones.
+@media (max-width: 767px) {
+  .gw-main { gap: 0; }
+  .gw-panel__head { padding: 0.875rem 1rem 0.625rem; position: sticky; top: 0; z-index: 2;
+    background: var(--cds-layer-01); }
+
+  // Apple HIG: 44px minimum target. Rank rows become comfortable tap areas.
+  .gw-rank {
+    grid-template-columns: 1.25rem 2.25rem 1fr auto;
+    padding: 0.875rem 1rem;
+    min-height: var(--gw-tap);
+    align-items: center;
+  }
+  .gw-rank__avatar { width: 2.25rem; height: 2.25rem; }
+  .gw-rank__score { font-size: 1.5rem; }
+  .gw-rank__why { font-size: 0.75rem; }
+
+  .gw-decomp { padding: 1rem; gap: 1.125rem; }
+  .gw-chartwrap { padding: 0.5rem 0.75rem 1rem; }
+
+  // Evidence collapses from 3 columns to a readable stack.
+  .gw-ev {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+    padding: 0.875rem 1rem;
+    min-height: var(--gw-tap);
+  }
+  .gw-ev__title { white-space: normal; }
+  .gw-ev__stats { white-space: normal; }
+
+  // The header meta string is far too long for a phone; the chips carry it.
+  .gw-headmeta { display: none; }
+
+  // Respect the home indicator.
+  .gw-area--evidence { padding-block-end: var(--gw-safe-b); }
+}
+
+// Large phones / small tablets keep two columns of evidence metadata.
+@media (min-width: 768px) and (max-width: 1199px) {
+  .gw-area--fingerprint { min-height: 26rem; }
+}
+
+// Anyone who asks for less motion gets none.
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+// ── In-place explanation (replaces hover tooltips) ──────────────────────────
+.gw-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.gw-explain__trigger {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: 0; border: 0; background: none; color: inherit; cursor: pointer;
+  font: inherit; text-align: left;
+  border-block-end: 1px dotted var(--cds-border-strong-01);
+  svg { color: var(--cds-text-helper); flex: 0 0 auto; }
+  &:hover svg, &--open svg { color: var(--cds-link-primary); }
+  &:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 2px; }
+}
+.gw-explain__detail {
+  margin: .375rem 0 0;
+  padding: .5rem .625rem;
+  background: var(--cds-layer-02);
+  border-inline-start: 2px solid var(--cds-border-interactive);
+  color: var(--cds-text-secondary);
+  font-size: .75rem;
+  line-height: 1.45;
+}
+
+
+// ── Centre panel: cohort strips ─────────────────────────────────────────────
+.gw-strips { padding: 0.75rem 1.25rem 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.gw-strip { display: flex; flex-direction: column; gap: 0.3rem; }
+.gw-strip__head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.gw-strip__label {
+  font-size: 0.75rem; letter-spacing: .02em; color: var(--cds-text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gw-strip__value { font-size: 0.75rem; color: var(--cds-text-helper); white-space: nowrap;
+  strong { font-size: 1rem; color: var(--cds-text-primary); font-variant-numeric: tabular-nums; }
+}
+.gw-strip__unit { color: var(--cds-text-helper); }
+
+.gw-strip__track {
+  position: relative; height: 26px;
+  background: var(--cds-layer-accent-01);
+  border-radius: 3px;
+}
+// Every engineer in the cohort — density reads as a histogram.
+.gw-strip__tick {
+  position: absolute; top: 6px; width: 1px; height: 14px;
+  background: var(--cds-text-helper); opacity: .38; transform: translateX(-.5px);
+}
+.gw-strip__rule { position: absolute; top: 0; bottom: 0; width: 1px; }
+.gw-strip__rule--median { background: var(--cds-text-secondary); opacity: .85; }
+.gw-strip__rule--p90 {
+  background: repeating-linear-gradient(to bottom,
+    var(--cds-text-secondary) 0 3px, transparent 3px 6px);
+  opacity: .7;
+}
+.gw-strip__ghost {
+  position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  border: 1.5px solid var(--cds-text-secondary); border-radius: 50%; opacity: .85;
+}
+.gw-strip__bench {
+  position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  background: var(--cds-text-helper); transform: rotate(45deg); opacity: .95;
+}
+.gw-strip__me--clipped::after {
+  content: '▸'; position: absolute; left: 13px; top: -4px;
+  font-size: 10px; color: #4589ff;
+}
+.gw-strip__me {
+  position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  background: #4589ff; border: 2px solid var(--cds-layer-01); border-radius: 50%;
+  box-shadow: 0 0 0 1px #4589ff;
+  transition: left 240ms cubic-bezier(.2,0,.38,.9);
+}
+.gw-strip__scale {
+  position: relative; height: 0.9rem; font-size: 0.625rem; color: var(--cds-text-helper);
+  font-variant-numeric: tabular-nums; overflow: hidden;
+}
+.gw-strip__scalestart { position: absolute; left: 0; white-space: nowrap; }
+.gw-strip__scalemid { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.gw-strip__scalemid--p90 { opacity: .75; }
+.gw-strip__scaleend { position: absolute; right: 0; white-space: nowrap;
+  em { font-style: normal; opacity: .8; } }
+
+.gw-strips__legend {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.35rem;
+  padding-top: 0.6rem; border-top: var(--gw-rail);
+  font-size: 0.6875rem; color: var(--cds-text-helper);
+  span { display: inline-flex; align-items: center; gap: 0.35rem; }
+}
+.gw-lg { width: 10px; height: 10px; flex: 0 0 auto; }
+.gw-lg--me { background: #4589ff; border-radius: 50%; }
+.gw-lg--ghost { border: 1.5px solid var(--cds-text-secondary); border-radius: 50%; }
+.gw-lg--bench { background: var(--cds-text-helper); transform: rotate(45deg); }
+.gw-lg--tick { width: 1px; height: 12px; background: var(--cds-text-helper); opacity: .5; }
+.gw-strips__note {
+  margin: 0.4rem 0 0; font-size: 0.6875rem; line-height: 1.4; color: var(--cds-text-helper);
+}
+
+// ── Centre panel: the cut line ──────────────────────────────────────────────
+.gw-cut { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.gw-cut__verdict {
+  margin: 0; font-size: 0.875rem; line-height: 1.5; color: var(--cds-text-primary);
+  strong { color: var(--cds-link-primary); }
+}
+.gw-cut__rows { position: relative; display: flex; flex-direction: column; gap: 0.25rem; }
+.gw-cut__row {
+  display: grid; grid-template-columns: 9rem 1fr 3rem; grid-template-areas: 'id track prob' '. fact fact';
+  align-items: center; gap: 0.15rem 0.5rem;
+  width: 100%; min-height: var(--gw-tap);
+  padding: 0.25rem 0.25rem; border: 0; border-radius: 3px;
+  background: none; color: inherit; cursor: pointer; text-align: left; font: inherit;
+  transition: background 150ms cubic-bezier(.2,0,.38,.9);
+  &:hover { background: var(--cds-layer-hover-01); }
+  &:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+}
+.gw-cut__row--sel { background: var(--cds-layer-selected-01); }
+.gw-cut__id { grid-area: id; display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
+.gw-cut__rank {
+  font-size: 0.6875rem; color: var(--cds-text-helper); font-variant-numeric: tabular-nums;
+  min-width: 0.85rem;
+}
+.gw-cut__name {
+  font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gw-cut__track { grid-area: track; }
+.gw-cut__prob { grid-area: prob; }
+.gw-cut__fact {
+  grid-area: fact; font-size: 0.6875rem; color: var(--cds-text-helper); line-height: 1.3;
+  strong { color: var(--cds-text-secondary); font-variant-numeric: tabular-nums; }
+  em { font-style: normal; opacity: .8; }
+}
+.gw-cut__track { position: relative; height: 16px; background: var(--cds-layer-accent-01); border-radius: 8px; }
+.gw-cut__band {
+  position: absolute; top: 3px; height: 10px; border-radius: 5px;
+  background: #4589ff; opacity: .55;
+  transition: left 240ms cubic-bezier(.2,0,.38,.9), width 240ms cubic-bezier(.2,0,.38,.9);
+}
+.gw-cut__median {
+  position: absolute; top: 1px; width: 2px; height: 14px; margin-left: -1px;
+  background: var(--cds-text-primary);
+}
+.gw-cut__prob {
+  font-size: 0.75rem; font-variant-numeric: tabular-nums; text-align: right; font-weight: 600;
+}
+.gw-cut__prob--locked { color: var(--cds-support-success); }
+.gw-cut__prob--mid { color: var(--cds-support-warning); }
+.gw-cut__prob--low { color: var(--cds-text-helper); }
+.gw-cut__line {
+  position: absolute; top: -2px; bottom: -2px; width: 0;
+  border-left: 1px dashed var(--cds-support-error); pointer-events: none;
+}
+.gw-cut__linelabel {
+  position: absolute; top: -0.9rem; left: 0.25rem;
+  font-size: 0.625rem; color: var(--cds-support-error); white-space: nowrap;
+}
+.gw-cut__axis {
+  display: flex; justify-content: space-between;
+  padding-inline: 7.75rem 3.25rem;
+  font-size: 0.625rem; color: var(--cds-text-helper);
+}
+
+// ── View switcher ───────────────────────────────────────────────────────────
+.gw-views { display: flex; gap: 0; border-bottom: var(--gw-rail); flex: 0 0 auto; }
+.gw-views__tab {
+  flex: 1; min-height: var(--gw-tap); padding: 0.5rem 0.75rem;
+  border: 0; border-bottom: 2px solid transparent; background: none;
+  color: var(--cds-text-secondary); font: inherit; font-size: 0.75rem; cursor: pointer;
+  transition: color 150ms, border-color 150ms, background 150ms;
+  &:hover { background: var(--cds-layer-hover-01); color: var(--cds-text-primary); }
+  &:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+}
+.gw-views__tab--active {
+  color: var(--cds-text-primary); border-bottom-color: var(--cds-border-interactive);
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .gw-strips { padding: 0.75rem 1rem 1rem; }
+  .gw-strip__head { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+  .gw-strip__label { white-space: normal; }
+  .gw-cut { padding: 1rem; }
+  .gw-cut__row { grid-template-columns: 7rem 1fr 2.5rem; }
+  .gw-cut__axis { padding-inline: 5.75rem 2.75rem; }
+  .gw-cut__line { display: none; }   // too tight to place honestly at phone width
+}
+
+
+// ── The finding (so-what strip) ─────────────────────────────────────────────
+.gw-insight {
+  display: flex; align-items: baseline; gap: 0.875rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--cds-layer-01);
+  border-bottom: var(--gw-rail);
+  flex: 0 0 auto;
+}
+.gw-insight__eyebrow {
+  font-size: 0.625rem; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--cds-text-helper); white-space: nowrap; flex: 0 0 auto;
+}
+.gw-insight__text {
+  margin: 0; font-size: 0.875rem; line-height: 1.45; color: var(--cds-text-secondary);
+  strong { color: var(--cds-text-primary); font-variant-numeric: tabular-nums; }
+}
+@media (max-width: 767px) {
+  .gw-insight { flex-direction: column; gap: 0.2rem; padding: 0.75rem 1rem; }
+  .gw-insight__text { font-size: 0.8125rem; }
 }

@@ -66,6 +66,24 @@ Three findings from the live PostHog repo shaped the whole design:
 | **380 COMMENTED : 118 APPROVED : 4 CHANGES_REQUESTED** | Approvals are a formality and score **zero**. The unit is a review thread the author answered with a code change |
 | **954 merged PRs are opened by PostHog's self-driving agent**, and humans commit into them (verified on PR #98640) | Attribution is commit- and steward-level, so neither the bot is credited nor the human erased |
 
+### The centre panel: interrogating the answer, not decorating it
+
+The dashboard's centre is deliberately **not** a radar chart. On live data the top five sit at
+percentiles 78-100 on every axis, so a radar renders five identical maximal pentagons — it looks
+analytical and carries nothing. Two views replace it:
+
+**Rank stability (default).** The cohort is re-ranked under **2,000 random weightings** of the five
+dimensions. Each engineer gets the rank band they occupy and how often they hold a top-five seat.
+This turns "trust my weights" into a falsifiable claim: a name that holds rank 1-2 under every
+definition of impact is a finding; a name swinging 4-12 is a coin flip the leader should know is a
+coin flip. Sampling is uniform over the simplex from a fixed seed, so the bands are reproducible.
+
+**Cohort distribution.** Every engineer in the repo plotted on the **raw countable fact** behind
+each dimension — 879 review threads, not "94th percentile" — with cohort median and p90 as
+reference lines. It shows the distribution a percentile was drawn from instead of asking you to
+trust it. The repo's highest-volume engineer is plotted as a labelled diamond: **Gilbert09 merged
+2,492 PRs and ranks #21**, which is the single fastest proof that this is not a volume metric.
+
 ### The five dimensions
 
 | Dimension | Asks | Why it resists gaming |

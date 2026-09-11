@@ -243,6 +243,15 @@ export interface EngineerMetrics {
   archetype: Archetype;
   confidence: Confidence;
   whySentence: string;
+  /** Raw countable value behind each dimension — what the cohort strips plot. */
+  facts: Record<DimensionKey, number>;
+  /** How robust this engineer's rank is to how you define impact. */
+  stability: {
+    topFiveProbability: number;
+    bandLow: number;
+    bandHigh: number;
+    medianRank: number;
+  };
   teams: string[];
   topAreas: Array<{ area: string; prCount: number; share: number }>;
   evidence: EvidencePR[];
@@ -265,6 +274,31 @@ export const DEFAULT_WEIGHTS: Weights = {
   problemShaping: 0.10,
 };
 
+/** One dimension's underlying countable fact, across the whole cohort. */
+export interface FactDistributionDTO {
+  key: DimensionKey;
+  label: string;
+  unit: string;
+  /** Every active engineer's raw value, ascending. */
+  values: number[];
+  median: number;
+  p90: number;
+  /** Axis ceiling — clipped so one outlier cannot squash the distribution. */
+  p95: number;
+  zeroCount: number;
+  max: number;
+  leaderLogin: string;
+  leaderValue: number;
+  leaderImpactRank: number;
+}
+
+export interface VolumeBenchmarkDTO {
+  login: string;
+  mergedPRs: number;
+  impactRank: number;
+  facts: Record<DimensionKey, number>;
+}
+
 export interface CohortSummary {
   repo: string;
   windowDays: number;
@@ -279,6 +313,12 @@ export interface CohortSummary {
   botReviewsExcluded: number;
   medianTimeToMergeHours: number;
   medianPercentiles: Record<DimensionKey, number>;
+  /** Raw-fact distributions behind each dimension — the centre panel plots these. */
+  factDistributions: FactDistributionDTO[];
+  /** The repo's highest-volume engineer, as a labelled counter-example. */
+  volumeBenchmark: VolumeBenchmarkDTO | null;
+  /** How many random weightings the rank-stability bands were drawn from. */
+  stabilityDraws: number;
 }
 
 export interface DashboardPayload {
