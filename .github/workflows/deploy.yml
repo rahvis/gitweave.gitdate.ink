@@ -95,6 +95,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Preflight — required secrets present
+        env:
+          GW_HOST: ${{ secrets.DEPLOY_HOST }}
+          GW_USER: ${{ secrets.DEPLOY_USER }}
+          GW_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          GW_KH: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          missing=""
+          [ -z "$GW_HOST" ] && missing="$missing DEPLOY_HOST"
+          [ -z "$GW_USER" ] && missing="$missing DEPLOY_USER"
+          [ -z "$GW_KEY" ]  && missing="$missing DEPLOY_SSH_KEY"
+          [ -z "$GW_KH" ]   && missing="$missing DEPLOY_KNOWN_HOSTS"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            echo "Note: a run snapshots its secrets when it is created — secrets added" \
+                 "after the run started are not visible to it. Re-run the workflow."
+            exit 1
+          fi
+          echo "All deployment secrets present."
+
       - name: Configure SSH
         run: |
           install -d -m 700 ~/.ssh
@@ -105,17 +125,17 @@ jobs:
 
       - name: Copy deployment files
         env:
-          HOST: ${{ secrets.DEPLOY_HOST }}
-          USER: ${{ secrets.DEPLOY_USER }}
+          GW_HOST: ${{ secrets.DEPLOY_HOST }}
+          GW_USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          scp -i ~/.ssh/id_ed25519 docker-compose.prod.yml "$USER@$HOST:/opt/gitweave/docker-compose.yml"
-          scp -i ~/.ssh/id_ed25519 docker/Caddyfile        "$USER@$HOST:/opt/gitweave/Caddyfile"
+          scp -i ~/.ssh/id_ed25519 docker-compose.prod.yml "$GW_USER@$GW_HOST:/opt/gitweave/docker-compose.yml"
+          scp -i ~/.ssh/id_ed25519 docker/Caddyfile        "$GW_USER@$GW_HOST:/opt/gitweave/Caddyfile"
 
       # Secrets are written to the droplet at deploy time and never committed.
       - name: Write runtime environment
         env:
-          HOST: ${{ secrets.DEPLOY_HOST }}
-          USER: ${{ secrets.DEPLOY_USER }}
+          GW_HOST: ${{ secrets.DEPLOY_HOST }}
+          GW_USER: ${{ secrets.DEPLOY_USER }}
         run: |
           cat > /tmp/gitweave.env <<ENVEOF
           NODE_ENV=production
@@ -145,23 +165,23 @@ jobs:
           GHCR_OWNER=${{ env.OWNER }}
           IMAGE_TAG=${{ github.sha }}
           ENVEOF
-          scp -i ~/.ssh/id_ed25519 /tmp/gitweave.env "$USER@$HOST:/opt/gitweave/.env"
+          scp -i ~/.ssh/id_ed25519 /tmp/gitweave.env "$GW_USER@$GW_HOST:/opt/gitweave/.env"
           rm -f /tmp/gitweave.env
 
       - name: Pull and restart
         env:
-          HOST: ${{ secrets.DEPLOY_HOST }}
-          USER: ${{ secrets.DEPLOY_USER }}
+          GW_HOST: ${{ secrets.DEPLOY_HOST }}
+          GW_USER: ${{ secrets.DEPLOY_USER }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         run: |
           # Log the droplet into GHCR for this pull. Works whether the
           # packages are public or private; the credential is short-lived and
           # refreshed on every deploy.
-          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" \
+          ssh -i ~/.ssh/id_ed25519 "$GW_USER@$GW_HOST" \
             "echo '$GHCR_TOKEN' | docker login ghcr.io -u '$GHCR_USER' --password-stdin"
 
-          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" 'bash -euo pipefail' <<'REMOTE'
+          ssh -i ~/.ssh/id_ed25519 "$GW_USER@$GW_HOST" 'bash -euo pipefail' <<'REMOTE'
             cd /opt/gitweave
             chmod 600 .env
             docker compose pull --quiet
@@ -172,16 +192,16 @@ jobs:
 
       - name: Wait for health
         env:
-          HOST: ${{ secrets.DEPLOY_HOST }}
+          GW_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$HOST/healthz" || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$GW_HOST/healthz" || true)
             if [ "$code" = "200" ]; then echo "API healthy after $((i*10))s"; break; fi
             if [ "$i" = "30" ]; then echo "::error::API never became healthy"; exit 1; fi
             sleep 10
           done
           for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$HOST/" || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$GW_HOST/" || true)
             if [ "$code" = "200" ]; then echo "Dashboard healthy after $((i*10))s"; exit 0; fi
             if [ "$i" = "30" ]; then echo "::error::Dashboard never became healthy"; exit 1; fi
             sleep 10
@@ -190,7 +210,7 @@ jobs:
       - name: Report
         if: always()
         env:
-          HOST: ${{ secrets.DEPLOY_HOST }}
+          GW_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           {
             echo "### GitWeave deployment"
@@ -199,5 +219,5 @@ jobs:
             echo "|---|---|"
             echo "| Commit | \`${{ github.sha }}\` |"
             echo "| URL | https://gitweave.gitdate.ink |"
-            echo "| Health | \`$(curl -s --max-time 10 "http://$HOST/healthz" || echo unreachable)\` |"
+            echo "| Health | \`$(curl -s --max-time 10 "http://$GW_HOST/healthz" || echo unreachable)\` |"
           } >> "$GITHUB_STEP_SUMMARY"
