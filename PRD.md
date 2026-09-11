@@ -118,7 +118,7 @@ Shipping fast means nothing if it comes back. This dimension can only ever *subt
 | **First-pass CI health** | % of their PRs green on first full CI run. | Respect for shared CI capacity and colleagues' time. |
 | **Incident linkage** | PRs carrying incident/sev labels or referenced from incident issues. | Direct, if sparse. |
 
-**Reported as a modifier in `[0.85, 1.10]`, never as a headline.** A leader should see *"Reliability: strong (0 reverts / 84 merges)"* as reassurance, not as a stick. We explicitly refuse to build a "blame score."
+**Reported as a penalty-only modifier in `(0.85, 1.00]`, never as a headline.** A leader should see *"Reliability: strong (0 reverts / 84 merges)"* as reassurance, not as a stick. We explicitly refuse to build a "blame score."
 
 ### 2.5 Dimension 4 — Reach
 
@@ -166,8 +166,9 @@ We then surface **Agent Leverage** as a first-class, *neutral* statistic on the 
 ```
 Raw_d      = Σ (signal_i × weight_i)                      for each dimension d
 Pct_d      = percentile_rank(Raw_d, active_cohort)        → 0–100
-Impact     = (0.28·Pct_own + 0.30·Pct_lev + 0.18·Pct_reach
-              + 0.14·Pct_init + 0.10·Pct_problem) × Reliability_modifier
+Weighted   = 0.28·Pct_own + 0.30·Pct_lev + 0.18·Pct_reach
+              + 0.14·Pct_init + 0.10·Pct_problem          → 0–100 (weights sum to 1)
+Impact     = Weighted × Reliability_modifier              → 0–100  (modifier ≤ 1)
 ```
 
 Five deliberate choices, each defending against a known failure mode:
@@ -176,7 +177,10 @@ Five deliberate choices, each defending against a known failure mode:
 2. **Percentile ranks, not raw values.** Makes dimensions with wildly different units commensurable, and makes the score robust to the long tail (one 4,723-line PR can't dominate).
 3. **Per-PR diminishing returns.** Every per-PR contribution passes through `log1p` before summation. Ten small PRs and one huge one converge.
 4. **Tenure normalisation.** Signals are per-active-day, so someone who joined 5 weeks ago competes fairly. A **data-sufficiency badge** (`<10 merged PRs` → "Low confidence") appears on the card rather than silently ranking them.
-5. **Reliability multiplies, never adds.** It cannot manufacture a high rank; it can only temper one.
+5. **Reliability multiplies, never adds — and only downward.** The modifier is capped at 1.00, so a
+   clean record earns no penalty rather than a bonus. That is what "can only temper a rank" actually
+   requires, and it is what keeps the Impact Score genuinely bounded at 0–100: the weighted
+   percentile sum maxes at 100, and nothing downstream may exceed it.
 
 **Weights are user-editable in the UI.** *"There's no one right answer"* is the honest position, so the product treats our weights as a **defensible default**, not a truth. A leader who believes reliability matters more drags a slider and watches the ranking reshuffle live. That single interaction converts the dashboard from "a number I don't trust" into "a model I can argue with" — which is the only way a leader ever actually adopts one.
 
@@ -555,7 +559,7 @@ WEIGHT_REACH=0.18
 WEIGHT_INITIATIVE=0.14
 WEIGHT_PROBLEM_SHAPING=0.10
 RELIABILITY_MODIFIER_MIN=0.85
-RELIABILITY_MODIFIER_MAX=1.10
+RELIABILITY_MODIFIER_MAX=1.00
 MIN_PRS_FOR_RANKING=5             # below this → "low confidence" badge, still listed
 BLAST_RADIUS_MULTIPLIER=1.6
 LOW_RISK_PATH_MULTIPLIER=0.4
@@ -730,7 +734,20 @@ same engineer who holds maximum `mergedPRs`). **All four would have rendered as 
 while carrying no information** — the same failure mode as §A.4, and the reason every axis is now
 validated against the distribution before it is drawn.
 
-### A.7 Confirmed as specified
+### A.7 The score could exceed 100
+
+§2.8 bounded each dimension to a 0–100 percentile and normalised the weights to sum to 1, so the
+weighted sum is bounded at 100 by construction. It then multiplied by a reliability modifier
+specified in `[0.85, 1.10]` — and 100 × 1.10 = 110. On live data the top engineer displayed **102**,
+on a scale every reader assumes runs to 100.
+
+The same section also asserted that reliability "cannot manufacture a high rank; it can only temper
+one", which a ceiling above 1.0 contradicts: a multiplier greater than 1 rewards, and rewarding is
+not tempering. **Corrected: the modifier is penalty-only, `(0.85, 1.00]`.** A clean record earns
+1.00 — no penalty, not a bonus — which bounds the score at 100 and makes the implementation match
+the intent the PRD already stated.
+
+### A.8 Confirmed as specified
 
 - **Token pooling is necessary, not a nicety.** Measured ~8 GraphQL cost-points per 25 PRs, so a
   single credential's 5,000 points/hr covers ~12,500 PRs — the 90-day PostHog window sits right

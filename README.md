@@ -94,8 +94,10 @@ trust it. The repo's highest-volume engineer is plotted as a labelled diamond: *
 | **Initiative** | Do they start things, or only execute? | New surfaces and files, plus shepherding others' work to merge |
 | **Problem Shaping** | Do they frame the problem, not just the patch? | Rate-based and Laplace-smoothed, so shipping more PRs neither helps nor hurts |
 
-**Reliability** is applied separately as a multiplier in `[0.85, 1.10]`. It can temper a rank but
-never manufacture one, and it is floored so it cannot become a blame score.
+**Reliability** is applied separately as a **penalty-only** multiplier in `(0.85, 1.00]`. A clean
+record earns 1.00 — no penalty, not a bonus — so it can temper a rank but never manufacture one,
+and the Impact Score stays genuinely **out of 100**. It is floored so it can never become a blame
+score.
 
 Scores are **percentile ranks within the active cohort**, not raw values — which makes the
 dimensions commensurable and keeps one 4,700-line PR from dominating.

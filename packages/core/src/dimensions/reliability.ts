@@ -9,11 +9,19 @@ const THIRTY_DAYS_MS = 30 * 86_400_000;
 /**
  * Reliability — does what they ship hold up?
  *
- * Deliberately a **multiplier**, never a headline. It can temper a high rank
- * but can never manufacture one, and it is floored so it cannot become a
- * blame score. Reverts are weighted 6× a rapid-fix follow-on: a revert is
- * unambiguous, while a same-file fix within 48h is often just healthy
- * iteration.
+ * Deliberately a **penalty-only multiplier**, never a headline, and bounded
+ * to (0.85, 1.00]. A clean record earns 1.00 — no penalty — rather than a
+ * bonus, for two reasons:
+ *
+ *   1. It is what "can only temper a rank, never manufacture one" actually
+ *      means. A ceiling above 1.0 rewards, and rewarding is not tempering.
+ *   2. It keeps the Impact Score genuinely bounded at 0-100. The weighted sum
+ *      of percentiles maxes at 100; a 1.10 ceiling pushed the top engineer to
+ *      102, which quietly broke the one thing every reader assumes about a
+ *      score out of 100.
+ *
+ * Reverts are weighted 6x a rapid-fix follow-on: a revert is unambiguous,
+ * while a same-file fix within 48h is often just healthy iteration.
  */
 export function computeReliability(raw: EngineerRaw, cfg: ReliabilityConfig): ReliabilitySignals {
   const mergedPRs = raw.authored.length;

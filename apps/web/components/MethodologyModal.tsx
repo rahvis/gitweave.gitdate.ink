@@ -19,6 +19,15 @@ export function MethodologyModal({ open, onClose, cohort }: { open: boolean; onC
         style={{ maxWidth: '100%', marginBottom: '1.5rem' }}
       />
 
+      <h5 style={{ marginBottom: '.5rem' }}>How the score is built</h5>
+      <p style={{ marginBottom: '1rem', color: 'var(--cds-text-secondary)', fontSize: '.875rem' }}>
+        Each dimension is a <strong>percentile rank</strong> (0&ndash;100) within the active cohort.
+        The Impact Score is those five percentiles combined under your weights, which sum to 1 &mdash;
+        so the score is genuinely <strong>out of 100</strong>. Reliability then applies as a
+        penalty-only multiplier in (0.85,&nbsp;1.00]: a clean record earns 1.00, never a bonus, so
+        it can temper a rank but can never push one past the ceiling.
+      </p>
+
       <h5 style={{ marginBottom: '.5rem' }}>What we deliberately do not measure</h5>
       <p style={{ marginBottom: '1rem', color: 'var(--cds-text-secondary)', fontSize: '.875rem' }}>
         Lines of code as a positive signal · commit counts (squash settings make them meaningless) ·

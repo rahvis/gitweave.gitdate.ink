@@ -83,13 +83,15 @@ export function Decomposition({ engineer, weights }: Props) {
         <div className="gw-kv">
           <Explain
             label={<span>Reliability</span>}
-            detail="A multiplier, never a headline. It can temper a high rank but cannot manufacture one, and it is floored at 0.85 so it never becomes a blame score."
+            detail="A penalty-only multiplier, bounded to (0.85, 1.00]. A clean record earns 1.00 — no penalty, not a bonus — so reliability can temper a rank but never manufacture one, and the score stays genuinely out of 100. Floored at 0.85 so it never becomes a blame score."
           />
           <strong>
             &times;{engineer.reliability.modifier.toFixed(2)}{' '}
-            {engineer.reliability.reverts === 0
-              ? <Tag type="green" size="sm">0 reverts</Tag>
-              : <Tag type="red" size="sm">{engineer.reliability.reverts} reverts</Tag>}
+            {engineer.reliability.modifier >= 1
+              ? <Tag type="green" size="sm">no penalty</Tag>
+              : engineer.reliability.reverts === 0
+                ? <Tag type="teal" size="sm">0 reverts</Tag>
+                : <Tag type="red" size="sm">{engineer.reliability.reverts} reverts</Tag>}
           </strong>
         </div>
         <div className="gw-note" style={{ marginTop: '.25rem' }}>

@@ -73,9 +73,9 @@ export function WeightsPanel({ open, weights, dirty, onChange, onClose, onReset 
       )}
 
       <p style={{ marginTop: '1rem', fontSize: '.75rem', color: 'var(--cds-text-helper)' }}>
-        Weights are normalised, so only their ratio matters. Reliability is applied separately as a
-        multiplier in [0.85, 1.10] and is not adjustable &mdash; it can temper a rank but must never
-        manufacture one. Defaults:{' '}
+        Weights are normalised, so only their ratio matters, and the score stays out of 100.
+        Reliability is applied separately as a penalty-only multiplier in (0.85, 1.00] and is not
+        adjustable &mdash; it can temper a rank but must never manufacture one. Defaults:{' '}
         {DIMENSION_KEYS.map((k) => `${DIMENSION_LABELS[k]} ${DEFAULT_WEIGHTS[k]}`).join(', ')}.
       </p>
       <Button kind="ghost" size="sm" onClick={onReset} style={{ marginTop: '.5rem' }}>

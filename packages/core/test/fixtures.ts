@@ -50,5 +50,5 @@ export const ENGINE_OPTS = {
   blastHighMultiplier: 1.6,
   blastLowMultiplier: 0.4,
   minPRsForRanking: 5,
-  reliability: { min: 0.85, max: 1.10, penaltyFactor: 1.2 },
+  reliability: { min: 0.85, max: 1.00, penaltyFactor: 1.2 },
 };

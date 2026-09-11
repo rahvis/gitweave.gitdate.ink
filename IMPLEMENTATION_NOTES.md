@@ -133,6 +133,21 @@ hover-only affordance hides the methodology from every mobile reader. Replaced w
 disclosure that expands beneath the label: nothing to position, nothing to overflow, and the same
 interaction on every input device.
 
+### 1.10 The Impact Score could exceed 100
+
+Each dimension is a 0–100 percentile and the weights normalise to 1, so the weighted sum is bounded
+at 100 by construction. It was then multiplied by a reliability modifier specified in
+`[0.85, 1.10]` — and 100 × 1.10 = 110. The top engineer displayed **102** on a scale every reader
+assumes runs to 100.
+
+The spec also said reliability "can only temper a rank, never manufacture one", which a ceiling
+above 1.0 directly contradicts. So the fix that bounds the score is the same one that makes the
+code match the stated intent: **the modifier is now penalty-only, `(0.85, 1.00]`**. A clean record
+earns 1.00.
+
+Two tests now hold the line: every engineer's `impactScore` must be ≤ 100, and it must stay ≤ 100
+under arbitrary re-weightings including degenerate ones (all weight on a single dimension).
+
 ---
 
 ## 2. Deliberate deviations from the PRD
@@ -178,7 +193,7 @@ Stated plainly, and surfaced in-product under the ⓘ action:
 | Console errors | 0 | **0** |
 | Metric materialisation (3 windows) | — | **~250 ms** per window |
 | GraphQL cost | — | **~8 points / 25 PRs** per request |
-| Engine tests | ≥85% coverage goal | **112 tests** |
+| Engine tests | ≥85% coverage goal | **115 tests** |
 | CI (typecheck + tests) | — | **~40 s** |
 | Deploy (build 3 images → live) | — | **~5 min** |
 

@@ -198,8 +198,16 @@ describe('reliability tempers but never manufactures rank', () => {
   it('keeps the modifier inside its configured floor and ceiling', () => {
     for (const e of payload.engineers) {
       expect(e.reliability.modifier).toBeGreaterThanOrEqual(0.85);
-      expect(e.reliability.modifier).toBeLessThanOrEqual(1.10);
+      expect(e.reliability.modifier).toBeLessThanOrEqual(1.0);
     }
+  });
+
+  it('never rewards — a clean record earns 1.00, not a bonus', () => {
+    const clean = payload.engineers.filter(
+      (e) => e.reliability.reverts === 0 && e.reliability.rapidFixFollowOns === 0,
+    );
+    expect(clean.length).toBeGreaterThan(0);
+    for (const e of clean) expect(e.reliability.modifier).toBe(1.0);
   });
 });
 
@@ -242,6 +250,33 @@ describe('every score is explainable', () => {
   it('names the owned surface in the deep owner\'s why-sentence', () => {
     expect(byLogin.get('deepowner')!.whySentence).toContain('core/hogql');
   });
+  /**
+   * Regression: the score is presented as "out of 100", and a reader will
+   * assume that. A reliability ceiling of 1.10 multiplied the top engineer's
+   * 96.7 weighted percentile to 102 on live data — a number that quietly
+   * contradicts the scale it is shown on.
+   */
+  it('never exceeds 100 — the score is presented out of 100 and must behave like it', () => {
+    for (const e of payload.engineers) {
+      expect(e.impactScore).toBeLessThanOrEqual(100);
+      expect(e.impactScore).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('keeps rescored values bounded under any weighting', () => {
+    for (const w of [
+      { ownership: 1, leverage: 0, reach: 0, initiative: 0, problemShaping: 0 },
+      { ownership: 0, leverage: 1, reach: 0, initiative: 0, problemShaping: 0 },
+      { ownership: 0.2, leverage: 0.2, reach: 0.2, initiative: 0.2, problemShaping: 0.2 },
+      { ownership: 99, leverage: 1, reach: 1, initiative: 1, problemShaping: 1 },
+    ]) {
+      for (const e of rescore(payload.engineers, w)) {
+        expect(e.impactScore).toBeLessThanOrEqual(100);
+        expect(e.impactScore).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
   it('produces finite, in-range percentiles for everyone', () => {
     for (const e of payload.engineers) {
       for (const v of Object.values(e.percentiles)) {
