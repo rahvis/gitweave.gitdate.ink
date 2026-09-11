@@ -203,13 +203,21 @@ jobs:
             # and the numbers on screen can never disagree.
             docker compose run --rm --no-deps ingest node dist/cli.js materialise
 
-            # Each deploy adds ~1.5GB of images. The age filter alone never
-            # fires on same-day deploys, so the host reached 25GB of images
-            # with 84% reclaimable. Dangling layers (superseded :latest) are
-            # always safe to drop; tagged images are kept for 48h so a rollback
-            # to a recent SHA still resolves locally.
+            # Retention by COUNT, not by age.
+            #
+            # Each deploy adds ~1.5GB across three images, tagged :<sha> and
+            # :latest. An age filter never fires on same-day deploys, and an
+            # old :<sha> stays *tagged* so it is never dangling either — the
+            # host reached 25GB with 84% reclaimable while both prunes reported
+            # success. `docker images` lists newest first, so keeping the two
+            # most recent SHAs per service retains a rollback target and drops
+            # the rest.
             docker image prune -f >/dev/null 2>&1 || true
-            docker image prune -af --filter "until=48h" >/dev/null 2>&1 || true
+            for svc in api ingest web; do
+              docker images --format '{{.Repository}}:{{.Tag}}' \
+                | grep "gitweave-${svc}:" | grep -v ':latest$' \
+                | tail -n +3 | xargs -r docker rmi -f >/dev/null 2>&1 || true
+            done
 
             docker compose ps
             df -h / | tail -1
