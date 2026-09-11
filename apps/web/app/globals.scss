@@ -1,0 +1,114 @@
+// Carbon's own reset + tokens. Font faces are disabled because the container
+// self-hosts nothing external — we fall back to Plex if the OS has it, then
+// to the platform UI stack, so the page never blocks on a font request.
+@use '@carbon/react' with (
+  $css--font-face: false,
+  $css--reset: true,
+  $css--body: true
+);
+@use '@carbon/react/scss/spacing' as *;
+@use '@carbon/react/scss/theme' as *;
+@use '@carbon/react/scss/type' as *;
+
+:root {
+  --gw-font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gw-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --gw-rail: 1px solid var(--cds-border-subtle-01);
+}
+
+html, body { font-family: var(--gw-font); height: 100%; }
+body { background: var(--cds-background); color: var(--cds-text-primary); overflow-x: hidden; }
+code, .gw-mono { font-family: var(--gw-mono); }
+
+// ── Single-page shell ───────────────────────────────────────────────────────
+// The primary answer (top 5 + why + evidence) must fit one 1440x900 laptop
+// screen without scrolling. Below that height the grid relaxes and scrolls
+// rather than crushing the content.
+.gw-shell { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.gw-main {
+  flex: 1; min-height: 0; display: grid;
+  grid-template-columns: 22rem minmax(0, 1fr) 21rem;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: 'ranks fingerprint decomposition' 'evidence evidence evidence';
+  gap: 1px; background: var(--cds-border-subtle-01);
+}
+.gw-panel { background: var(--cds-layer-01); min-height: 0; display: flex; flex-direction: column; }
+.gw-panel__head {
+  padding: $spacing-04 $spacing-05 $spacing-03;
+  border-bottom: var(--gw-rail); flex: 0 0 auto;
+  display: flex; align-items: baseline; justify-content: space-between; gap: $spacing-03;
+}
+.gw-panel__title {
+  @include type-style('label-01');
+  letter-spacing: .08em; text-transform: uppercase; color: var(--cds-text-secondary);
+}
+.gw-panel__meta { @include type-style('label-01'); color: var(--cds-text-helper); }
+.gw-panel__body { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; }
+
+.gw-area--ranks { grid-area: ranks; }
+.gw-area--fingerprint { grid-area: fingerprint; }
+.gw-area--decomposition { grid-area: decomposition; }
+.gw-area--evidence { grid-area: evidence; max-height: 15.5rem; }
+
+// ── Rank cards ──────────────────────────────────────────────────────────────
+.gw-rank {
+  display: grid; grid-template-columns: 1.25rem 2rem 1fr auto;
+  gap: $spacing-03; align-items: start;
+  padding: $spacing-04 $spacing-05; width: 100%; text-align: left;
+  border: none; border-bottom: var(--gw-rail); border-left: 3px solid transparent;
+  background: transparent; color: inherit; cursor: pointer;
+  transition: background 150ms cubic-bezier(.2,0,.38,.9), border-color 150ms;
+}
+.gw-rank:hover { background: var(--cds-layer-hover-01); }
+.gw-rank:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+.gw-rank--active { background: var(--cds-layer-selected-01); border-left-color: var(--cds-interactive); }
+.gw-rank__pos { @include type-style('label-01'); color: var(--cds-text-helper); padding-top: .15rem; font-variant-numeric: tabular-nums; }
+.gw-rank__avatar { width: 2rem; height: 2rem; border-radius: 50%; background: var(--cds-layer-02); }
+.gw-rank__name { @include type-style('body-compact-01'); font-weight: 600; display: block; }
+.gw-rank__why { @include type-style('label-01'); color: var(--cds-text-secondary); margin-top: .125rem; line-height: 1.35; display: block; }
+.gw-rank__tags { display: flex !important; flex-wrap: wrap; gap: .25rem; margin-top: .375rem; }
+.gw-rank__score { @include type-style('heading-03'); font-variant-numeric: tabular-nums; line-height: 1; }
+.gw-rank__scorelabel { @include type-style('label-01'); color: var(--cds-text-helper); text-align: right; }
+
+// ── Score decomposition ─────────────────────────────────────────────────────
+.gw-decomp { padding: $spacing-05; display: flex; flex-direction: column; gap: $spacing-04; }
+.gw-decomp__row { display: flex; flex-direction: column; gap: .25rem; }
+.gw-decomp__head { display: flex; justify-content: space-between; align-items: baseline; gap: $spacing-03; }
+.gw-decomp__label { @include type-style('body-compact-01'); }
+.gw-decomp__points { @include type-style('body-compact-01'); font-variant-numeric: tabular-nums; font-weight: 600; }
+.gw-bar { height: .375rem; background: var(--cds-layer-accent-01); border-radius: 2px; overflow: hidden; }
+.gw-bar__fill { height: 100%; border-radius: 2px; transition: width 240ms cubic-bezier(.2,0,.38,.9); }
+.gw-decomp__facts { @include type-style('label-01'); color: var(--cds-text-secondary); display: flex; flex-direction: column; gap: .1rem; }
+.gw-decomp__fact { display: flex; gap: .375rem; }
+.gw-decomp__fact::before { content: '↳'; color: var(--cds-text-helper); }
+
+// ── Evidence rail ───────────────────────────────────────────────────────────
+.gw-ev { display: grid; grid-template-columns: 5.5rem minmax(0,1fr) auto; gap: $spacing-04;
+  padding: $spacing-03 $spacing-05; border-bottom: var(--gw-rail); align-items: baseline; }
+.gw-ev:hover { background: var(--cds-layer-hover-01); }
+.gw-ev__num { @include type-style('code-01'); color: var(--cds-link-primary); }
+.gw-ev__title { @include type-style('body-compact-01'); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw-ev__reasons { @include type-style('label-01'); color: var(--cds-text-secondary); margin-top: .125rem; }
+.gw-ev__stats { @include type-style('label-01'); color: var(--cds-text-helper); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gw-add { color: var(--cds-support-success); }
+.gw-del { color: var(--cds-support-error); }
+
+// ── Misc ────────────────────────────────────────────────────────────────────
+.gw-agent { padding: $spacing-05; border-top: var(--gw-rail); }
+.gw-kv { display: flex; justify-content: space-between; gap: $spacing-03; @include type-style('label-01'); }
+.gw-note { @include type-style('label-01'); color: var(--cds-text-helper); line-height: 1.4; }
+.gw-chartwrap { padding: $spacing-03 $spacing-05 $spacing-05; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gw-empty { padding: $spacing-07; text-align: center; color: var(--cds-text-secondary); }
+
+@media (max-height: 800px) {
+  .gw-shell { height: auto; min-height: 100vh; overflow: auto; }
+  .gw-main { grid-template-rows: minmax(28rem, auto) auto; }
+}
+@media (max-width: 1200px) {
+  .gw-shell { height: auto; overflow: auto; }
+  .gw-main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'ranks' 'fingerprint' 'decomposition' 'evidence';
+  }
+  .gw-area--evidence { max-height: none; }
+}

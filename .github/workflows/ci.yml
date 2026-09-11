@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck every workspace
+        run: pnpm run typecheck
+
+      - name: Test the metric engine
+        run: pnpm run test
+
+      # The repo is public — a leaked PAT would be live the moment it lands.
+      - name: Fail if a real token is committed
+        run: |
+          if git grep -nIE 'gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,}' -- . ; then
+            echo "::error::A GitHub token appears to be committed. Rotate it immediately."
+            exit 1
+          fi
+          echo "No committed credentials found."
+
+      - name: Fail if .env is tracked
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "::error::.env is tracked by git."
+            exit 1
+          fi
+          echo ".env is not tracked."

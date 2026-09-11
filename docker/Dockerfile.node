@@ -1,0 +1,33 @@
+# ── Shared image for the API and the ingest worker ──────────────────────────
+# Both are bundled by tsup with workspace packages inlined (noExternal), so
+# the runtime needs only real npm dependencies — installed once with pnpm's
+# hoisted linker so they can be copied as a plain node_modules tree.
+
+FROM node:22-alpine AS base
+RUN corepack enable && apk add --no-cache libc6-compat
+WORKDIR /app
+
+FROM base AS builder
+ARG APP=api
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @gitweave/${APP} run build
+
+FROM base AS proddeps
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY packages ./packages
+COPY apps ./apps
+RUN pnpm install --frozen-lockfile --prod --node-linker=hoisted --ignore-scripts
+
+FROM node:22-alpine AS runner
+ARG APP=api
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apk add --no-cache tini curl && addgroup -S gw && adduser -S gw -G gw
+COPY --from=proddeps --chown=gw:gw /app/node_modules ./node_modules
+COPY --from=builder  --chown=gw:gw /app/apps/${APP}/dist ./dist
+USER gw
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/index.js"]

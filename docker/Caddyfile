@@ -1,0 +1,53 @@
+# Automatic HTTPS via Let's Encrypt. DNS for gitweave.gitdate.ink already
+# points at this droplet, so Caddy provisions and renews the certificate
+# without any further configuration.
+
+{
+	email admin@gitdate.ink
+	# Uncomment to debug certificate issuance against the LE staging CA:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+gitweave.gitdate.ink {
+	encode zstd gzip
+
+	# Inspectable REST mirrors, so the underlying data can be curl'd and
+	# audited rather than only viewed. Matched before the catch-all.
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+	handle /healthz {
+		reverse_proxy api:4000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}
+
+# Bare-IP access keeps working (no TLS possible for an IP from LE).
+:80 {
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+	handle /healthz {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

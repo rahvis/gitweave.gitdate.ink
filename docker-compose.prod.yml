@@ -1,0 +1,105 @@
+# Production stack for the DigitalOcean droplet.
+#
+# Differences from docker-compose.yml (local dev):
+#   • Pulls pre-built images from GHCR instead of building on the host.
+#   • Nothing but Caddy binds a host port — Mongo, Redis and the API are
+#     reachable only on the private compose network.
+#   • Caddy terminates TLS for gitweave.gitdate.ink automatically.
+#
+# IMAGE_TAG is set by the deploy workflow to the commit SHA, so a rollback is
+# `IMAGE_TAG=<old-sha> docker compose up -d`.
+
+name: gitweave
+
+x-image-base: &registry ghcr.io/${GHCR_OWNER:-rahvis}
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - caddy-logs:/var/log/caddy
+    depends_on:
+      web: { condition: service_started }
+      api: { condition: service_started }
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-gitweave}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?set in /opt/gitweave/.env}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    image: ghcr.io/${GHCR_OWNER:-rahvis}/gitweave-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-gitweave}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/${MONGODB_DB_NAME:-gitweave}?authSource=admin
+      REDIS_URL: redis://redis:6379
+      API_PORT: 4000
+      NODE_ENV: production
+    depends_on:
+      mongo: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  ingest:
+    image: ghcr.io/${GHCR_OWNER:-rahvis}/gitweave-ingest:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-gitweave}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/${MONGODB_DB_NAME:-gitweave}?authSource=admin
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:
+    image: ghcr.io/${GHCR_OWNER:-rahvis}/gitweave-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:4000
+      NEXT_PUBLIC_API_URL: https://gitweave.gitdate.ink
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  mongo-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
+  caddy-logs:

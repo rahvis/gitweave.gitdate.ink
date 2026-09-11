@@ -1,0 +1,203 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Run a full 90-day backfill on boot"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # never interrupt a half-finished deploy
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  # ── Gate: never deploy a red build ──────────────────────────────────────
+  verify:
+    name: Typecheck & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run test
+
+  # ── Build the three images in parallel ──────────────────────────────────
+  build:
+    name: Build ${{ matrix.name }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: api
+            dockerfile: docker/Dockerfile.node
+            build_args: APP=api
+          - name: ingest
+            dockerfile: docker/Dockerfile.node
+            build_args: APP=ingest
+          - name: web
+            dockerfile: docker/Dockerfile.web
+            build_args: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args }}
+          push: true
+          provenance: false
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/gitweave-${{ matrix.name }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/gitweave-${{ matrix.name }}:latest
+          # Layer cache lives in GHA, so repeat deploys skip pnpm install.
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+
+  # ── Ship it ─────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to droplet
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://gitweave.gitdate.ink
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          install -d -m 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Copy deployment files
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          scp -i ~/.ssh/id_ed25519 docker-compose.prod.yml "$USER@$HOST:/opt/gitweave/docker-compose.yml"
+          scp -i ~/.ssh/id_ed25519 docker/Caddyfile        "$USER@$HOST:/opt/gitweave/Caddyfile"
+
+      # Secrets are written to the droplet at deploy time and never committed.
+      - name: Write runtime environment
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          cat > /tmp/gitweave.env <<ENVEOF
+          NODE_ENV=production
+          LOG_LEVEL=info
+
+          GITHUB_AUTH_MODE=pat
+          GITHUB_TOKEN=${{ secrets.GW_GITHUB_TOKEN }}
+          GITHUB_TOKENS=${{ secrets.GW_GITHUB_TOKENS }}
+
+          TARGET_REPO_OWNER=${{ vars.TARGET_REPO_OWNER || 'PostHog' }}
+          TARGET_REPO_NAME=${{ vars.TARGET_REPO_NAME || 'posthog' }}
+          ANALYSIS_WINDOW_DAYS=90
+          BACKFILL_MAX_PRS=0
+
+          MONGODB_DB_NAME=gitweave
+          MONGO_INITDB_ROOT_USERNAME=gitweave
+          MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+
+          INGEST_CONCURRENCY=6
+          INGEST_PAGE_SIZE=25
+          SYNC_CRON=*/15 * * * *
+          # The worker skips this automatically when the store is already
+          # populated, so leaving it on is safe for every push.
+          BACKFILL_ON_BOOT=true
+          FORCE_BACKFILL=${{ inputs.backfill || 'false' }}
+
+          GHCR_OWNER=${{ env.OWNER }}
+          IMAGE_TAG=${{ github.sha }}
+          ENVEOF
+          scp -i ~/.ssh/id_ed25519 /tmp/gitweave.env "$USER@$HOST:/opt/gitweave/.env"
+          rm -f /tmp/gitweave.env
+
+      - name: Pull and restart
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          # Log the droplet into GHCR for this pull. Works whether the
+          # packages are public or private; the credential is short-lived and
+          # refreshed on every deploy.
+          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" \
+            "echo '$GHCR_TOKEN' | docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+
+          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" 'bash -euo pipefail' <<'REMOTE'
+            cd /opt/gitweave
+            chmod 600 .env
+            docker compose pull --quiet
+            docker compose up -d --remove-orphans
+            docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
+            docker compose ps
+          REMOTE
+
+      - name: Wait for health
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$HOST/healthz" || true)
+            if [ "$code" = "200" ]; then echo "API healthy after $((i*10))s"; break; fi
+            if [ "$i" = "30" ]; then echo "::error::API never became healthy"; exit 1; fi
+            sleep 10
+          done
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$HOST/" || true)
+            if [ "$code" = "200" ]; then echo "Dashboard healthy after $((i*10))s"; exit 0; fi
+            if [ "$i" = "30" ]; then echo "::error::Dashboard never became healthy"; exit 1; fi
+            sleep 10
+          done
+
+      - name: Report
+        if: always()
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          {
+            echo "### GitWeave deployment"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| URL | https://gitweave.gitdate.ink |"
+            echo "| Health | \`$(curl -s --max-time 10 "http://$HOST/healthz" || echo unreachable)\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

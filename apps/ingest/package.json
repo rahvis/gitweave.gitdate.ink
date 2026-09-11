@@ -1,0 +1,26 @@
+{
+  "name": "@gitweave/ingest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "cli": "tsx src/cli.ts",
+    "seed": "tsx src/cli.ts seed"
+  },
+  "dependencies": {
+    "@gitweave/config": "workspace:*",
+    "@gitweave/core": "workspace:*",
+    "@gitweave/db": "workspace:*",
+    "@gitweave/github": "workspace:*",
+    "@gitweave/types": "workspace:*",
+    "bullmq": "^5.34.6",
+    "ioredis": "^5.4.2"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5", "tsx": "^4.19.2", "typescript": "^5.7.2", "@types/node": "^22.10.2"
+  }
+}

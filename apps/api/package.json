@@ -1,0 +1,26 @@
+{
+  "name": "@gitweave/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gitweave/config": "workspace:*",
+    "@gitweave/core": "workspace:*",
+    "@gitweave/db": "workspace:*",
+    "@gitweave/types": "workspace:*",
+    "@fastify/cors": "^10.0.2",
+    "@trpc/server": "^11.0.0-rc.660",
+    "fastify": "^5.2.0",
+    "pino": "^9.5.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5", "tsx": "^4.19.2", "typescript": "^5.7.2", "@types/node": "^22.10.2"
+  }
+}
