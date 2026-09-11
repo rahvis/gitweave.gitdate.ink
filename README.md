@@ -1,5 +1,10 @@
 # GitWeave
 
+### ▶ Live: **[gitweave.gitdate.ink](https://gitweave.gitdate.ink)**
+
+[![CI](https://github.com/rahvis/gitweave.gitdate.ink/actions/workflows/ci.yml/badge.svg)](https://github.com/rahvis/gitweave.gitdate.ink/actions/workflows/ci.yml)
+[![Deploy](https://github.com/rahvis/gitweave.gitdate.ink/actions/workflows/deploy.yml/badge.svg)](https://github.com/rahvis/gitweave.gitdate.ink/actions/workflows/deploy.yml)
+
 **Engineering impact intelligence for GitHub.** Answers one question for a busy engineering
 leader in under ten seconds:
 
@@ -13,6 +18,14 @@ exact pull requests that produced it.
 Reference target: [PostHog/posthog](https://github.com/PostHog/posthog) — 15,061 merged PRs in 90 days.
 
 📄 Full product spec: **[PRD.md](PRD.md)** · Build notes and deviations: **[IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)**
+
+---
+
+## Deployment
+
+Pushes to `main` run typecheck + 96 tests, build three images to GHCR, and deploy to a
+DigitalOcean droplet behind Caddy-terminated TLS — gated on a health check. See
+**[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ---
 
