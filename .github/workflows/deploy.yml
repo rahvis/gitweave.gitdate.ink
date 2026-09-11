@@ -186,6 +186,14 @@ jobs:
             chmod 600 .env
             docker compose pull --quiet
             docker compose up -d --remove-orphans
+
+            # Metrics are a MATERIALISED document, and it is only rebuilt when a
+            # sync job finishes. A deploy that changes the metric engine would
+            # otherwise keep serving numbers computed by the previous engine
+            # until the next cron tick. Recompute every window now, so the code
+            # and the numbers on screen can never disagree.
+            docker compose run --rm --no-deps ingest node dist/cli.js materialise
+
             docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
             docker compose ps
           REMOTE
