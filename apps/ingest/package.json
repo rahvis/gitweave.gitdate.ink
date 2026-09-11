@@ -18,9 +18,16 @@
     "@gitweave/github": "workspace:*",
     "@gitweave/types": "workspace:*",
     "bullmq": "^5.34.6",
-    "ioredis": "^5.4.2"
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.4.2",
+    "mongodb": "^6.12.0",
+    "pino": "^9.5.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "tsup": "^8.3.5", "tsx": "^4.19.2", "typescript": "^5.7.2", "@types/node": "^22.10.2"
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
   }
 }
