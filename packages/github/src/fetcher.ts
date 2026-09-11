@@ -9,7 +9,7 @@ interface GqlNode { [k: string]: unknown }
 
 interface GqlPR {
   number: number; title: string; body: string | null; url: string;
-  createdAt: string; mergedAt: string | null; closedAt: string | null; state: string;
+  createdAt: string; updatedAt: string; mergedAt: string | null; closedAt: string | null; state: string;
   additions: number; deletions: number; changedFiles: number; headRefName: string;
   author: GqlActor | null; mergedBy: GqlActor | null;
   labels: { nodes: Array<{ name: string }> };
@@ -64,6 +64,7 @@ export function normalisePR(repo: string, pr: GqlPR): PullRequestRecord {
     body: pr.body ?? '',
     url: pr.url,
     createdAt: pr.createdAt,
+    updatedAt: pr.updatedAt ?? pr.createdAt,
     mergedAt: pr.mergedAt,
     closedAt: pr.closedAt,
     state: (pr.state === 'MERGED' || pr.state === 'CLOSED' || pr.state === 'OPEN' ? pr.state : 'CLOSED'),
@@ -134,10 +135,21 @@ export interface FetchStats {
 }
 
 /**
- * Paginates merged PRs newest-first, stopping once `mergedAt` falls before the
- * window. Ordering by UPDATED_AT (the only order GitHub offers alongside a
- * MERGED filter) means a recently-touched old PR can appear late, so we use a
- * tolerance of consecutive out-of-window pages rather than bailing on the first.
+ * Paginates merged PRs in UPDATED_AT-descending order.
+ *
+ * TERMINATION IS KEYED ON `updatedAt`, NOT `mergedAt`. This is the whole
+ * correctness argument, so it is worth stating:
+ *
+ *   updatedAt >= mergedAt always holds. So once a page's oldest `updatedAt`
+ *   falls before the window start, every remaining PR in the ordering also
+ *   has updatedAt < windowStart, hence mergedAt < windowStart, hence none of
+ *   them can be in the window. Stopping there is provably lossless.
+ *
+ * The previous heuristic — stop after 3 consecutive pages with no in-window
+ * *merges* — looked reasonable and was badly wrong: old PRs that were merely
+ * commented on recently sort early, so a run of them triggered an early exit.
+ * On PostHog that terminated the walk at 3,841 of ~15,000 PRs and reported
+ * "complete". A window that silently truncates is worse than one that fails.
  */
 export async function fetchMergedPRs(
   client: GitHubGraphQLClient,
@@ -149,10 +161,9 @@ export async function fetchMergedPRs(
   let cursor: string | null = opts.startCursor ?? null;
   let pageSize = opts.pageSize ?? 50;
   let pages = 0;
-  let staleStreak = 0;
   let remaining = 0;
+  let reachedWindowEdge = false;
   const started = Date.now();
-  const STALE_TOLERANCE = 3;
 
   for (;;) {
     let result: MergedPRsResult;
@@ -177,6 +188,12 @@ export async function fetchMergedPRs(
     const inWindow = batch.filter((p) => p.mergedAt && new Date(p.mergedAt).getTime() >= since);
     collected.push(...inWindow);
 
+    // Page is ordered newest-updated first, so the last node is the oldest.
+    const oldestUpdated = batch.length > 0
+      ? new Date(batch[batch.length - 1]!.updatedAt).getTime()
+      : null;
+    if (oldestUpdated !== null && oldestUpdated < since) reachedWindowEdge = true;
+
     const stats: FetchStats = {
       pages, prs: collected.length, costSpent: client.totalCost,
       remaining, elapsedMs: Date.now() - started,
@@ -187,12 +204,11 @@ export async function fetchMergedPRs(
       logger.info({ ...stats, pageSize, pool: client.poolSnapshot().length }, 'Ingest progress');
     }
 
-    staleStreak = inWindow.length === 0 ? staleStreak + 1 : 0;
     cursor = conn.pageInfo.endCursor;
 
     if (!conn.pageInfo.hasNextPage) break;
-    if (staleStreak >= STALE_TOLERANCE) {
-      logger.info({ pages }, 'Reached end of analysis window');
+    if (reachedWindowEdge) {
+      logger.info({ pages, prs: collected.length }, 'Reached window edge (updatedAt < windowStart)');
       break;
     }
     if (opts.maxPRs && collected.length >= opts.maxPRs) {

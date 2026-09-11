@@ -19,7 +19,7 @@ describe('bot leakage regression (live data, rank 3)', () => {
   it('marks every bot actor, not just the PR author, at normalisation time', () => {
     const raw = {
       number: 1, title: 'fix: something', body: '', url: 'https://github.com/x/y/pull/1',
-      createdAt: '2026-08-01T10:00:00Z', mergedAt: '2026-08-01T16:00:00Z', closedAt: null,
+      createdAt: '2026-08-01T10:00:00Z', updatedAt: '2026-08-01T16:00:00Z', mergedAt: '2026-08-01T16:00:00Z', closedAt: null,
       state: 'MERGED', additions: 10, deletions: 1, changedFiles: 1,
       headRefName: 'posthog-self-driving/x',
       author: { login: 'posthog', __typename: 'Bot' },

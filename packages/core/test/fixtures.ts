@@ -11,6 +11,7 @@ export function makePR(overrides: Partial<PullRequestRecord> = {}): PullRequestR
     body: '',
     url: `https://github.com/PostHog/posthog/pull/${counter}`,
     createdAt: '2026-08-01T10:00:00Z',
+    updatedAt: '2026-08-01T16:00:00Z',
     mergedAt: '2026-08-01T16:00:00Z',
     closedAt: '2026-08-01T16:00:00Z',
     state: 'MERGED',

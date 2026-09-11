@@ -75,6 +75,8 @@ export const PullRequestRecordSchema = z.object({
   body: z.string(),
   url: z.string(),
   createdAt: z.string(),
+  /** Drives pagination order; see the fetcher's termination rule. */
+  updatedAt: z.string(),
   mergedAt: z.string().nullable(),
   closedAt: z.string().nullable(),
   state: z.enum(['OPEN', 'CLOSED', 'MERGED']),

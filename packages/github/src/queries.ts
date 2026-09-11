@@ -26,6 +26,7 @@ export const MERGED_PRS_QUERY = /* GraphQL */ `
           body
           url
           createdAt
+          updatedAt
           mergedAt
           closedAt
           state
