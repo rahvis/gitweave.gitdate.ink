@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, Theme,
@@ -43,6 +43,22 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
   // Default is the Cut Line: the centre panel's job is to INTERROGATE the
   // ranking, not re-render the five percentiles the right-hand panel already
   // shows with raw facts attached.
+  /**
+   * Relative time is computed AFTER mount.
+   *
+   * Rendering it during SSR produced a hydration mismatch (React #418): the
+   * server said "3m ago" and the client, a beat later, said "4m ago". The
+   * absolute timestamp is the stable value both sides agree on; the friendly
+   * one is a client-only enhancement.
+   */
+  const [computedAgo, setComputedAgo] = useState<string | null>(null);
+  useEffect(() => {
+    const tick = () => setComputedAgo(relativeTime(cohort.computedAt));
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, [payload.cohort.computedAt]);
+
   const [view, setView] = useState<'cut' | 'strips'>('cut');
 
   const dirty = useMemo(
@@ -85,7 +101,10 @@ export function Dashboard({ payload, windowDays }: { payload: DashboardPayload; 
               {cohort.totalMergedPRs.toLocaleString()} merged PRs ·{' '}
               {cohort.activeEngineers.toLocaleString()} engineers ·{' '}
               {cohort.botsExcluded.length} bots excluded ·{' '}
-              computed {relativeTime(cohort.computedAt)}
+              computed{' '}
+              <span suppressHydrationWarning>
+                {computedAgo ?? new Date(cohort.computedAt).toISOString().slice(11, 16) + ' UTC'}
+              </span>
             </span>
           </div>
           <HeaderGlobalBar>
